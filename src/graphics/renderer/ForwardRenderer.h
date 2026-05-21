@@ -14,8 +14,6 @@
 
 namespace Lengine {
 
-
-   
     struct RenderFlags {
         bool entitySelected = false;
         bool entityDragged = false;
@@ -41,8 +39,7 @@ namespace Lengine {
             else RenderScene_pbr(ctx);
         }
 
- 
-       
+   
     private:
         AssetManager& assetManager;
 
@@ -118,100 +115,3 @@ namespace Lengine {
     };
 }
 
-/*
-   struct RenderCommand {
-       uint32_t entity;
-       glm::mat4 model;
-   };
-
-   struct RenderKey {
-       GLSLProgram* shader;
-       UUID materialID;
-       UUID meshID;
-       uint32_t subMeshIndex;
-
-       bool operator==(const RenderKey& o) const {
-           return shader == o.shader &&
-               materialID == o.materialID &&
-               meshID == o.meshID &&
-               subMeshIndex == o.subMeshIndex;
-       }
-   };
-   struct RenderKeyHash {
-       size_t operator()(const RenderKey& k) const {
-           size_t h = 0;
-           h ^= std::hash<void*>()(k.shader);
-           h ^= std::hash<UUID>()(k.materialID) << 1;
-           h ^= std::hash<UUID>()(k.meshID) << 2;
-           h ^= std::hash<uint32_t>()(k.subMeshIndex) << 3;
-           return h;
-       }
-   };
-
-   class RenderBatcher {
-   public:
-       using BatchMap =
-           std::unordered_map<RenderKey,
-           std::vector<RenderCommand>,
-           RenderKeyHash>;
-
-       void submit(const RenderKey& key, const RenderCommand& cmd) {
-           batches[key].push_back(cmd);
-       }
-
-       void clear() {
-           batches.clear();
-       }
-
-       BatchMap batches;
-   };
-   */
-
-   /*
-      struct RenderCommand {
-          uint32_t entity;
-          glm::mat4 model;
-      };
-
-      struct RenderKey {
-          GLSLProgram* shader;
-          UUID materialID;
-          UUID meshID;
-          uint32_t subMeshIndex;
-
-          bool operator==(const RenderKey& o) const {
-              return shader == o.shader &&
-                  materialID == o.materialID &&
-                  meshID == o.meshID &&
-                  subMeshIndex == o.subMeshIndex;
-          }
-      };
-      struct RenderKeyHash {
-          size_t operator()(const RenderKey& k) const {
-              size_t h = 0;
-              h ^= std::hash<void*>()(k.shader);
-              h ^= std::hash<UUID>()(k.materialID) << 1;
-              h ^= std::hash<UUID>()(k.meshID) << 2;
-              h ^= std::hash<uint32_t>()(k.subMeshIndex) << 3;
-              return h;
-          }
-      };
-
-      class RenderBatcher {
-      public:
-          using BatchMap =
-              std::unordered_map<RenderKey,
-              std::vector<RenderCommand>,
-              RenderKeyHash>;
-
-          void submit(const RenderKey& key, const RenderCommand& cmd) {
-              batches[key].push_back(cmd);
-          }
-
-          void clear() {
-              batches.clear();
-          }
-
-          BatchMap batches;
-      };
-      */

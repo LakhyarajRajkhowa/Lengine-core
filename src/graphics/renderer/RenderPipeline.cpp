@@ -53,12 +53,33 @@ void RenderPipeline::RecreateFramebuffers()
     hdrSpec.colorAttachmentCount = 2; // scene + bright
 
     hdrFramebuffer = std::make_unique<Framebuffer>(hdrSpec);
+
+    FramebufferSpecification gbufferSpec;
+    gbufferSpec.width = renderSettings.resolution_X;
+    gbufferSpec.height = renderSettings.resolution_Y;
+    gbufferSpec.samples = 1;
+    gbufferSpec.colorFormats =
+    {
+        GL_RGBA16F,     // Position
+        GL_RGBA16F,     // Normal
+        GL_RGBA8,       // Albedo + Alpha
+        GL_RGBA16F      // Roughness + Metallic
+    };
+
+    gbufferSpec.colorAttachmentCount = 4;
+    gbufferSpec.useDepth = true;
+
+    gbufferSpec.filtering =
+    {
+        GL_NEAREST,
+        GL_NEAREST,
+        GL_NEAREST,
+        GL_NEAREST
+    };
+
+    gBuffer = std::make_unique<Framebuffer>(gbufferSpec);
+
     
-
-    // ---------------------------
-    // 3 MSAA (optional)
-    // ---------------------------
-
     if (renderSettings.MSAA)
     {
         FramebufferSpecification msaaSpec;
@@ -93,7 +114,8 @@ void RenderPipeline::BuildGraph()
 {
     renderGraph.Clear();
 
-    // ---- SHADOW ----
+    // SHADOW PASS
+
     renderGraph.AddPass(
         std::make_unique<ShadowPass>(
             shadowCubemap,
@@ -102,57 +124,26 @@ void RenderPipeline::BuildGraph()
         )
     );
 
-    // ---- FORWARD PASS ----- 
 
-    if (renderSettings.MSAA)
+    if (renderSettings.renderPath == RenderPath::Forward)
     {
-       
-        renderGraph.AddPass(
-            std::make_unique<ForwardPass>(
-                forwardRenderer,
-                *msaaFramebuffer
-            )
-        );
-       
+        // FORWARD RENDERING
 
-        // SKYBOX
-        renderGraph.AddPass(
-            std::make_unique<SkyboxPass>(
-                *msaaFramebuffer,
-                hdrSkybox,
-                Paths::Textures + "Hdr/" + "autumn_field_puresky_4k.hdr",
-                512
-            )
-        );
-
-        
-
-        Framebuffer& resolveTarget =
-             *hdrFramebuffer;
-
-        renderGraph.AddPass(
-            std::make_unique<ResolvePass>(
-                *msaaFramebuffer,
-                resolveTarget
-            )
-        );
-       
-    }
-    else
-    {
         Framebuffer& target =
-            *hdrFramebuffer;
+            renderSettings.MSAA
+            ? *msaaFramebuffer
+            : *hdrFramebuffer;
 
-
+        // Main forward scene rendering
         renderGraph.AddPass(
             std::make_unique<ForwardPass>(
                 forwardRenderer,
                 target
             )
         );
- 
 
-        // SKYBOX
+
+        // Skybox
         renderGraph.AddPass(
             std::make_unique<SkyboxPass>(
                 target,
@@ -161,26 +152,72 @@ void RenderPipeline::BuildGraph()
                 512
             )
         );
+
+        // Resolve MSAA -> HDR framebuffer
+        if (renderSettings.MSAA)
+        {
+            renderGraph.AddPass(
+                std::make_unique<ResolvePass>(
+                    *msaaFramebuffer,
+                    *hdrFramebuffer
+                )
+            );
+        }
+    }
+    else
+    {
+        // DEFERRED RENDERING
+
+        // Geometry pass
+        renderGraph.AddPass(
+            std::make_unique<GeometryPass>(
+                deferredRenderer,
+                *gBuffer
+            )
+        );
+
+        // Lighting pass
+        renderGraph.AddPass(
+            std::make_unique<DeferredLightingPass>(
+                deferredRenderer,
+                *hdrFramebuffer,
+                *gBuffer
+            )
+        );
+
+        renderGraph.AddPass(
+            std::make_unique<DepthCopyPass>(
+                *gBuffer,
+                *hdrFramebuffer
+            )
+        );
+
+        // Skybox after lighting
+        renderGraph.AddPass(
+            std::make_unique<SkyboxPass>(
+                *hdrFramebuffer,
+                hdrSkybox,
+                Paths::Textures + "Hdr/" + "autumn_field_puresky_4k.hdr",
+                512
+            )
+        );
     }
 
+    // POST PROCESSING
 
-    // ---- POST PROCESS -----
-
-    
-    if (renderSettings.enableBloom) {
+    if (renderSettings.enableBloom)
+    {
         renderGraph.AddPass(
             std::make_unique<BloomPass>(
                 postProcess,
                 *hdrFramebuffer,
                 renderSettings.resolution_X,
                 renderSettings.resolution_Y
-
             )
         );
     }
 
-
-
+    // Final tonemap to backbuffer/main framebuffer
     renderGraph.AddPass(
         std::make_unique<ToneMapPass>(
             postProcess,
@@ -188,10 +225,7 @@ void RenderPipeline::BuildGraph()
             *hdrFramebuffer
         )
     );
-
-
-  
-} 
+}
 
 
 void RenderPipeline::Render(RenderContext& ctx)

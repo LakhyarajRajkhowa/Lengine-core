@@ -4,6 +4,7 @@
 #include "../graphics/geometry/HDREnvironment.h"
 #include "../graphics/frameBuffers/FrameBuffer.h"
 #include "../graphics/renderer/ForwardRenderer.h"
+#include "../graphics/renderer/DeferredRenderer.h"
 
 
 namespace Lengine {
@@ -82,6 +83,101 @@ namespace Lengine {
     private:
         ForwardRenderer& renderer;
         Framebuffer& target;
+    };
+
+    class GeometryPass : public RenderPass
+    {
+    public:
+        GeometryPass(DeferredRenderer& renderer,
+            Framebuffer& target)
+            : renderer(renderer), target(target) {}
+
+        void Execute(RenderContext& ctx) override
+        {
+            target.Bind();
+
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            renderer.RenderGeometry(ctx);
+
+            target.Unbind();
+        }
+
+    private:
+        DeferredRenderer& renderer;
+        Framebuffer& target;
+    };
+
+    class DeferredLightingPass : public RenderPass
+    {
+    public:
+        DeferredLightingPass(
+            DeferredRenderer& renderer,
+            Framebuffer& target,
+            Framebuffer& gBuffer
+            )
+            : renderer(renderer),
+            target(target),
+            gBuffer(gBuffer)
+        {}
+
+        void Execute(RenderContext& ctx) override
+        {
+            target.Bind();
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_FALSE);
+
+            renderer.RenderLighting(ctx, gBuffer);
+
+            glDepthMask(GL_TRUE);
+            glEnable(GL_DEPTH_TEST);
+
+            target.Unbind();
+
+        }
+
+    private:
+        DeferredRenderer& renderer;
+        Framebuffer& target;
+        Framebuffer& gBuffer;
+    };
+
+    class DepthCopyPass : public RenderPass
+    {
+    public:
+        DepthCopyPass(
+            Framebuffer& src,
+            Framebuffer& dst)
+            : source(src), destination(dst)
+        {}
+
+        void Execute(RenderContext& ctx) override
+        {
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, source.GetID());
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination.GetID());
+
+            glBlitFramebuffer(
+                0, 0,
+                source.GetWidth(),
+                source.GetHeight(),
+
+                0, 0,
+                destination.GetWidth(),
+                destination.GetHeight(),
+
+                GL_DEPTH_BUFFER_BIT,
+                GL_NEAREST
+            );
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+
+    private:
+        Framebuffer& source;
+        Framebuffer& destination;
     };
 
     class ResolvePass : public RenderPass
@@ -251,22 +347,19 @@ namespace Lengine {
         RenderPipeline(AssetManager& assetManager_) :
             assetManager(assetManager_), 
             forwardRenderer(assetManager_),
+            deferredRenderer(assetManager_),
             shadowMap(1024),
             shadowCubemap(1024)
         {}
-        // -------- Lifecycle --------
         void Init();
         void Resize(uint32_t width, uint32_t height);
 
-        // -------- Frame --------
         void Render(RenderContext& ctx);
         Framebuffer& GetFinalFramebuffer();
        
-        // -------- Settings --------
         void SetRenderSettings(const RenderSettings& settings);
         RenderSettings& GetRenderSettings();
 
-        // -------- Output --------
         uint32_t GetFinalImage() const
         {
             return mainFramebuffer->GetColorAttachment(0);
@@ -277,42 +370,44 @@ namespace Lengine {
             return hdrSkybox;
         }
 
-    private:
+        uint32_t GetGbufferPosition() const {
+            return gBuffer->GetColorAttachment(0);
+        }
 
-        // =============================
-        // Systems (owned here)
-        // =============================
+        uint32_t GetGbufferNormal() const {
+            return gBuffer->GetColorAttachment(1);
+        }
+
+        uint32_t GetGbufferAlbedo() const {
+            return gBuffer->GetColorAttachment(2);
+        }
+
+        uint32_t GetGbufferMR() const {
+            return gBuffer->GetColorAttachment(3);
+        }
+
+    private:
         AssetManager& assetManager;
 
         ForwardRenderer forwardRenderer;
+        DeferredRenderer deferredRenderer;
+
         PostProcessing postProcess;
         HDREnvironment hdrSkybox;
         
         ShadowMap shadowMap;
         ShadowCubeMap shadowCubemap;
 
-        // =============================
-        // Render Targets
-        // =============================
-
         std::unique_ptr<Framebuffer> mainFramebuffer;
         std::unique_ptr<Framebuffer> hdrFramebuffer;
         std::unique_ptr<Framebuffer> msaaFramebuffer;
-
-
-        // =============================
-        // Render Graph
-        // =============================
+        std::unique_ptr<Framebuffer> gBuffer;
 
         RenderGraph renderGraph;
 
         void BuildGraph();
         void RecreateFramebuffers();
         void PostProcess();
-
-        // =============================
-        // Internal State
-        // =============================
 
         RenderSettings renderSettings;
 

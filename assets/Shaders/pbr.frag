@@ -19,7 +19,7 @@ uniform vec3  lightDirections[MAX_LIGHTS];  // dir / spot (normalized)
 uniform vec3  lightColors[MAX_LIGHTS];
 uniform int   lightTypes[MAX_LIGHTS];        // 0=Dir, 1=Point, 2=Spot
 uniform float lightIntensities[MAX_LIGHTS];
-uniform bool lightCastShadow[MAX_LIGHTS];
+uniform bool  lightCastShadow[MAX_LIGHTS];
 
 uniform float lightRanges[MAX_LIGHTS];
 uniform float lightInnerAngles[MAX_LIGHTS]; // cos(inner)
@@ -101,7 +101,6 @@ uniform mat3 envRotation;
 
 // Shadow map
 uniform sampler2D shadowMap;
-
 uniform samplerCube shadowCubeMap;
 uniform float farPlane;
 

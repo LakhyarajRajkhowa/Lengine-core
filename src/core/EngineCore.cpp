@@ -27,7 +27,7 @@ namespace Lengine {
         renderSettings.resolution_Y = settings.resolution_Y;
      
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("emptyScene");
+        scenesTobeLoaded.push_back("light_test");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 
@@ -38,13 +38,16 @@ namespace Lengine {
         physicsSystem.Init();
     }
 
+    // TODO : Fix Editor and Runtime Scene 
     void EngineCore::updateEssentials(const EditorMode& mode)
     {
-        Scene* editorScene = sceneManager.GetActiveScene(mode);
+        Scene* activeScene = sceneManager.GetActiveScene(mode);
+        Scene* editorScene = sceneManager.GetEditorScene();
+
 
         inputManager.Update();
         assetManager.Update(*editorScene);
-
+        UpdateTimer();
 
         transformSystem.Update(editorScene->Transforms(), editorScene->Hierarchys(), editorScene->GetRootEntities());
 
@@ -52,12 +55,10 @@ namespace Lengine {
 
     void EngineCore::updateRuntime(const EditorMode& mode)
     {
-        Scene* editorScene = sceneManager.GetActiveScene(mode);
+        Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
 
-        UpdateTimer();
-
-        physicsSystem.update(deltaTime, editorScene->Transforms());
-        animationSystem.Update(editorScene->Animations(), editorScene->Skeletons(),  deltaTime);
+        physicsSystem.update(deltaTime, runtimeScene->Transforms());
+        animationSystem.Update(runtimeScene->Animations(), runtimeScene->Skeletons(),  deltaTime);
     }
 
 
@@ -76,7 +77,7 @@ namespace Lengine {
         updateEssentials(mode);
 
         if (mode == EditorMode::PLAY) {
-            updateRuntime(mode);
+          //  updateRuntime(mode);
         }
 
         pollEvents();

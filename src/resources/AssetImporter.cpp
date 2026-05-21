@@ -547,12 +547,8 @@ bool AssetImporter::ImportPrefabFile(const fs::path& externalPath, const UUID& u
     int counter = 1;
     while (fs::exists(assetDir))
     {
-        // if already exist means already imported !
-        std::cout << assetDir.filename() << " already exists: " << externalPath << std::endl;
-
-        return false;
-        // assetDir = assetsRoot /
-         //    (assetName.string() + "_" + std::to_string(counter++));
+         assetName = assetName.string() + "_" + std::to_string(counter++); 
+         assetDir = assetsRoot / assetName;
     }
 
     fs::create_directories(assetDir);
@@ -1005,10 +1001,8 @@ bool AssetImporter::ImportTextureFile(const fs::path& externalPath, const UUID& 
         int counter = 1;
         while (fs::exists(assetDir))
         {
-            // if already exist means already imported !
-            std::cout << assetDir.filename() << " already exists: " << externalPath << std::endl;
-            return true;
-
+            assetName = assetName.string() + "_" + std::to_string(counter++);
+            assetDir = assetsRoot / assetName;
         }
 
         fs::create_directories(assetDir);
@@ -1071,7 +1065,7 @@ void MaterialImporter::ImportAssimpMaterial(
 {
     std::string matName = mat->GetName().C_Str();
     if (matName.empty())
-        matName = "Material_" + materialUUID.toUint64();
+        matName = "Material_" + std::to_string(materialUUID.toUint64());
 
     fs::path matPath = outDir / (matName + ".pbrmat");
 

@@ -5,6 +5,7 @@ namespace Lengine
     enum class TextureUnit : unsigned int
     {
         // ----- Material Maps -----
+        gPosition = 0,
         Albedo = 1,
         Normal = 2,
         Metallic = 3,

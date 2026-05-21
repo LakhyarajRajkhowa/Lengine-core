@@ -19,6 +19,9 @@ namespace Lengine {
         static constexpr const char* DEBUG = "Debug shader";
         static constexpr const char* OUTLINE = "Outline shader";
         static constexpr const char* GIZMO_GRID = "Gizmo Grid";
+        static constexpr const char* GEOMETRY = "Geometry";
+        static constexpr const char* DEFERRED_PBR = "Deferred PBR shader";
+
 
         static std::vector<ShaderAsset> GetAllDefaults()
         {
@@ -42,6 +45,16 @@ namespace Lengine {
                     GIZMO_GRID,
                     ShaderPath::GridVert(),
                     ShaderPath::GridFrag()
+                },
+                {
+                    GEOMETRY,
+                    ShaderPath::GeometryVert(),
+                    ShaderPath::GeometryFrag()
+                },
+                 {
+                    DEFERRED_PBR,
+                    ShaderPath::DeferredPBRVert(),
+                    ShaderPath::DeferredPBRFrag()
                 }
             };
         }

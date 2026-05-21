@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../scene/Scene.h"
 #include "../resources/AssetManager.h"
 
@@ -6,30 +7,59 @@ namespace Lengine {
 
     class SceneManager {
     private:
-        std::unordered_set<Scene*> scenes;
-        Scene* activeScene;
 
+        std::vector<std::unique_ptr<Scene>> scenes;
+
+        Scene* activeScene = nullptr;
         std::unique_ptr<Scene> runtimeScene = nullptr;
+
         AssetManager& assetManager;
+
     public:
-        SceneManager(AssetManager& asstMgr) : assetManager(asstMgr) {}   
-        Scene* GetActiveScene(const EditorMode mode) { 
-            if (mode == EditorMode::EDIT)
-                return activeScene;
-            else
-                return runtimeScene.get();
+
+        SceneManager(AssetManager& asstMgr)
+            : assetManager(asstMgr) {}
+
+        Scene* GetActiveScene(EditorMode mode)
+        {
+            return (mode == EditorMode::EDIT)
+                ? activeScene
+                : runtimeScene.get();
         }
 
-        Scene* GetEditorScene() { return activeScene; }
-        std::unique_ptr<Scene>& GetRuntimeScene() { return runtimeScene; }
+        Scene* GetEditorScene()
+        {
+            return activeScene;
+        }
 
-        void CreateRuntimeScene() { runtimeScene = activeScene->Clone(); }
-        void setActiveScene(Scene* scene);
+        std::unique_ptr<Scene>& GetRuntimeScene()
+        {
+            return runtimeScene;
+        }
 
-        const std::unordered_set<Scene*>& getScenes() const { return scenes; }
-        std::unordered_set<Scene*>& getScenes() { return scenes; }
+        void CreateRuntimeScene()
+        {
+            runtimeScene = activeScene->Clone();
+        }
+
+        void setActiveScene(Scene* scene) {
+            if (!scene)
+                return;
+
+            activeScene = scene;
+        }
+
+        const auto& getScenes() const
+        {
+            return scenes;
+        }
+
+        auto& getScenes()
+        {
+            return scenes;
+        }
 
         void loadScenes(const std::vector<std::string>& scenes);
-        
     };
-} 
+
+}

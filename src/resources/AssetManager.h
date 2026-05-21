@@ -165,9 +165,9 @@ namespace Lengine {
 		void saveAssetDatabase();
 
 		// SCENE
-		Scene* createScene(const std::string& name, const std::string& folderPath);
+		std::unique_ptr<Scene> createScene(const std::string& name, const std::string& folderPath);
 		void saveScene(const Scene& scene, const std::string& filePath);
-		Scene* loadScene(const std::string& filePath);
+		std::unique_ptr<Scene> loadScene(const std::string& filePath);
 
 
 		std::unordered_map<UUID, AssetState> assetStates;

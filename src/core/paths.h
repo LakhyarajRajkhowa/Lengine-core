@@ -163,6 +163,26 @@ namespace Lengine {
         {
             return Frag("grid");
         }
+
+        static std::string GeometryVert()
+        {
+            return Vert("geometry");
+        }
+
+        static std::string GeometryFrag()
+        {
+            return Frag("geometry");
+        }
+
+        static std::string DeferredPBRVert()
+        {
+            return Vert("deferredPBRLighting");
+        }
+
+        static std::string DeferredPBRFrag()
+        {
+            return Frag("deferredPBRLighting");
+        }
     };
 
 }

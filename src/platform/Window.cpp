@@ -1,5 +1,8 @@
 #include "Window.h"
 #include <iostream>
+
+
+
 namespace Lengine {
 
     Window::Window(std::string windowName, int screenWidth, int screenHeight, unsigned int currentFlags)
@@ -7,6 +10,9 @@ namespace Lengine {
 
         SDL_Init(SDL_INIT_EVERYTHING);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+        // for graphics debugging
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
         Create(windowName, screenWidth, screenHeight, currentFlags);
     }

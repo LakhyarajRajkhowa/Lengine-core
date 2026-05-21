@@ -5,29 +5,25 @@
 
 namespace Lengine {
 
-    static GLenum GetFormatFromInternal(GLenum internalFormat)
+    static GLenum GetFormatFromInternal(GLenum internal)
     {
-        switch (internalFormat)
+        switch (internal)
         {
-        case GL_RGBA8:
-        case GL_RGBA16F:
-            return GL_RGBA;
+        case GL_RGBA8:   return GL_RGBA;
+        case GL_RGBA16F: return GL_RGBA;
 
-        case GL_RGB8:
-        case GL_RGB16F:
-            return GL_RGB;
+        case GL_RGB8:    return GL_RGB;
+        case GL_RGB16F:  return GL_RGB;
 
-        case GL_R32F:
-            return GL_RED;
+        case GL_RG16F:   return GL_RG;
 
-        default:
-            return GL_RGBA;
+        default: return GL_RGBA;
         }
     }
 
-    static GLenum GetTypeFromInternal(GLenum internalFormat)
+    static GLenum GetTypeFromInternal(GLenum internal)
     {
-        switch (internalFormat)
+        switch (internal)
         {
         case GL_RGBA8:
         case GL_RGB8:
@@ -35,14 +31,13 @@ namespace Lengine {
 
         case GL_RGBA16F:
         case GL_RGB16F:
-        case GL_R32F:
+        case GL_RG16F:
             return GL_FLOAT;
 
         default:
             return GL_UNSIGNED_BYTE;
         }
     }
-
     struct FramebufferSpecification
     {
         uint32_t width = 1280;
@@ -50,6 +45,7 @@ namespace Lengine {
 
         uint32_t samples = 1;            // 1 = no MSAA
         std::vector<GLenum> colorFormats = { GL_RGBA8 }; // GL_RGBA8 or GL_RGBA16F
+        std::vector<GLenum> filtering;
 
         uint32_t colorAttachmentCount = 1;
         bool     useDepth = true;

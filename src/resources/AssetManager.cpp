@@ -894,13 +894,13 @@ void AssetManager::saveAssetDatabase() {
 
 //          ----- SCENE -----
 
-Scene* AssetManager::createScene(const std::string& name, const std::string& folderPath)
+std::unique_ptr<Scene> AssetManager::createScene(const std::string& name, const std::string& folderPath)
 {
     namespace fs = std::filesystem;
 
     // Create a new scene with UUID
     UUID sID;
-    Scene* scene = new Scene(name, sID);
+    std::unique_ptr<Scene> scene = std::make_unique<Scene>(name, sID);
 
     fs::path dir(folderPath);
 
@@ -1183,7 +1183,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 }
 
 
-Scene* AssetManager::loadScene(const std::string& filePath)
+std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 {
     namespace fs = std::filesystem;
 
@@ -1222,7 +1222,7 @@ Scene* AssetManager::loadScene(const std::string& filePath)
             return nullptr;
         }
 
-        Scene* scene = new Scene(sceneName, UUID(sceneUUID));
+        std::unique_ptr<Scene> scene = std::make_unique<Scene>(sceneName, UUID(sceneUUID));
 
         // ---- Entities ----
         const auto& jEntities = jScene.at("entities");
@@ -1359,7 +1359,6 @@ Scene* AssetManager::loadScene(const std::string& filePath)
                     if (jc.contains("orthoSize"))
                         c.orthoSize = jc.at("orthoSize");
 
-                    // 🔥 IMPORTANT: recompute projection
                     c.recalculateProjection();
 
                     scene->Cameras().Add(entityID, c);
