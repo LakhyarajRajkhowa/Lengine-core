@@ -2,6 +2,7 @@
 
 #include <string>
 
+
 namespace Lengine {
     class NameTagComponent
     {

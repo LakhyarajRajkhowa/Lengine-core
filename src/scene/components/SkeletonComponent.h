@@ -1,9 +1,10 @@
 #pragma once
 
 #include <vector>
+
 #include <glm/glm.hpp>
+
 #include "utils/UUID.h"
-#include "animations/Skeleton.h"
 
 namespace Lengine {
     struct SkeletonComponent

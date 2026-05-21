@@ -55,7 +55,7 @@ namespace Lengine {
 
     void EngineCore::updateRuntime(const EditorMode& mode)
     {
-        Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
+        Scene* runtimeScene = sceneManager.GetActiveScene(mode);
 
         physicsSystem.update(deltaTime, runtimeScene->Transforms());
         animationSystem.Update(runtimeScene->Animations(), runtimeScene->Skeletons(),  deltaTime);
@@ -75,11 +75,7 @@ namespace Lengine {
     void EngineCore::run(const EditorMode mode)
     {
         updateEssentials(mode);
-
-        if (mode == EditorMode::PLAY) {
-          //  updateRuntime(mode);
-        }
-
+        updateRuntime(mode);
         pollEvents();
 
     }

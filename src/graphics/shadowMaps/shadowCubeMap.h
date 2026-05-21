@@ -19,8 +19,8 @@ namespace Lengine {
 
 		void renderDepthCubeMap(
 			const std::vector<std::unique_ptr<Entity>>& entities,
-			const TransformStorage& trs,
-			const MeshFilterStorage& mfs,
+			const ComponentStorage<TransformComponent>& trs,
+			const ComponentStorage<MeshFilter>& mfs,
 			const UUID& mainPointLight,
 			AssetManager& assetManager
 		);

@@ -21,12 +21,6 @@ namespace Lengine {
         bool localDirty = true;
         bool worldDirty = true;
 
-        glm::vec3& GetWorldPosition()
-        {
-
-            return glm::vec3(worldMatrix[3]);
-        }
-
         glm::vec3 GetWorldPosition() const
         {
             return glm::vec3(worldMatrix[3]);

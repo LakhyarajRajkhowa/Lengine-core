@@ -190,21 +190,21 @@ void ForwardRenderer::RenderScene_pbr(
     glBindTexture(GL_TEXTURE_2D, ctx.brdfLUTMap.id);
 
 
-    if (lightComponents.GetDirectionalShadowCasteer() != UUID::Null
-        && transforms.Has(lightComponents.GetDirectionalShadowCasteer())
+    if (activeScene->GetDirectionalShadowCaster() != UUID::Null
+        && transforms.Has(activeScene->GetDirectionalShadowCaster())
         )
     {
         bindShadowMapUniforms(
             *pbrShader,
             *ctx.shadowMap,
-            transforms.Get(lightComponents.GetDirectionalShadowCasteer()),
+            transforms.Get(activeScene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
     }
 
 
-    if (lightComponents.GetPointShadowCasteer() != UUID::Null
-        && transforms.Has(lightComponents.GetPointShadowCasteer())
+    if (activeScene->GetPointShadowCaster() != UUID::Null
+        && transforms.Has(activeScene->GetPointShadowCaster())
         )
     {
 
@@ -217,7 +217,7 @@ void ForwardRenderer::RenderScene_pbr(
        
     uint32_t lightNum = 0;
 
-    for (const auto& [id, light] : lightComponents.GetAll())
+    for (const auto& [id, light] : lightComponents.All())
     {
         if (!transforms.Has(id))
             continue;
@@ -298,7 +298,6 @@ void ForwardRenderer::RenderScene_pbr(
 
         const TransformComponent& t = transforms.Get(entityID);
         const MeshFilter& mf = meshFilters.Get(entityID);
-        const AnimationComponent* anim = animations.Get(mf.rootParent);
 
 
         if (mf.HasPendingSubmesh()) continue;
@@ -314,26 +313,31 @@ void ForwardRenderer::RenderScene_pbr(
         }
        
         // Animation
-        if (mesh && anim && anim->currentAnimationID != UUID::Null && anim->finalBoneMatrices.size())
+
+        pbrShader->setBool("useSkeleton", false);
+
+        if (animations.Has(mf.rootParent))
         {
-            for (int i = 0; i < mesh->bonePalette.size(); i++)
+            const AnimationComponent& anim = animations.Get(mf.rootParent);
+
+            if (mesh &&
+                anim.currentAnimationID != UUID::Null &&
+                anim.finalBoneMatrices.size())
             {
-                int globalID = mesh->bonePalette[i];
+                for (int i = 0; i < mesh->bonePalette.size(); i++)
+                {
+                    int globalID = mesh->bonePalette[i];
 
-                pbrShader->setMat4(
-                    "finalBonesMatrices[" + std::to_string(i) + "]",
-                    anim->finalBoneMatrices[globalID]
-                );
+                    pbrShader->setMat4(
+                        "finalBonesMatrices[" + std::to_string(i) + "]",
+                        anim.finalBoneMatrices[globalID]
+                    );
+                }
+
+                pbrShader->setBool("useSkeleton", true);
             }
-
-            pbrShader->setBool("useSkeleton", true);
-
         }
-        else {
-            pbrShader->setBool("useSkeleton", false);
-
-        }
-
+        
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
 
@@ -455,7 +459,7 @@ void ForwardRenderer::RenderScene_debug(
             if (!meshFilters.Has(entityID)) continue;
 
             const TransformComponent& t = transforms.Get(entityID);
-            const AnimationComponent* anim = animations.Get(meshFilters.Get(entityID).rootParent);
+            const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
 
             
             shader->setMat4("model", t.worldMatrix);
@@ -463,7 +467,7 @@ void ForwardRenderer::RenderScene_debug(
             Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
 
             // Animation
-            if (sm && anim && anim->currentAnimationID != UUID::Null && anim->finalBoneMatrices.size())
+            if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
             {
 
                 for (int i = 0; i < sm->bonePalette.size(); i++)
@@ -472,7 +476,7 @@ void ForwardRenderer::RenderScene_debug(
 
                     shader->setMat4(
                         "finalBonesMatrices[" + std::to_string(i) + "]",
-                        anim->finalBoneMatrices[globalID]
+                        anim.finalBoneMatrices[globalID]
                     );
                 }
 
@@ -499,29 +503,35 @@ void ForwardRenderer::RenderScene_debug(
             if (!meshFilters.Has(entityID)) continue;
 
             const TransformComponent& t = transforms.Get(entityID);
-            const AnimationComponent* anim = animations.Get(meshFilters.Get(entityID).rootParent);
 
             outlineShader->setMat4("model", t.worldMatrix);
 
             Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
 
             // Animation
-            if (sm && anim && anim->currentAnimationID != UUID::Null && anim->finalBoneMatrices.size())
-            {
 
-                for (int i = 0; i < sm->bonePalette.size(); i++)
+            if (animations.Has(meshFilters.Get(entityID).rootParent)) {
+                const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
+
+                if (sm && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
                 {
-                    int globalID = sm->bonePalette[i];
 
-                    outlineShader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(i) + "]",
-                        anim->finalBoneMatrices[globalID]
-                    );
+                    for (int i = 0; i < sm->bonePalette.size(); i++)
+                    {
+                        int globalID = sm->bonePalette[i];
+
+                        outlineShader->setMat4(
+                            "finalBonesMatrices[" + std::to_string(i) + "]",
+                            anim.finalBoneMatrices[globalID]
+                        );
+                    }
+
+
                 }
 
-
             }
-
+               
+           
             if (sm) sm->draw();
         }
 
@@ -553,7 +563,7 @@ void ForwardRenderer::RenderScene_debug(
 
         const TransformComponent& t = transforms.Get(entityID);
         const MeshFilter& mf = meshFilters.Get(entityID);
-        const AnimationComponent* anim = animations.Get(mf.rootParent);
+        const AnimationComponent& anim = animations.Get(mf.rootParent);
 
 
         if (mf.HasPendingSubmesh()) continue;
@@ -606,7 +616,7 @@ void ForwardRenderer::RenderScene_debug(
             Mesh* sm = assetManager.GetSubmesh(mf.meshID);
 
             // Animation
-            if (sm && anim && anim->currentAnimationID != UUID::Null && anim->finalBoneMatrices.size())
+            if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
             {
 
                 for (int i = 0; i < sm->bonePalette.size(); i++)
@@ -615,7 +625,7 @@ void ForwardRenderer::RenderScene_debug(
 
                     shader->setMat4(
                         "finalBonesMatrices[" + std::to_string(i) + "]",
-                        anim->finalBoneMatrices[globalID]
+                        anim.finalBoneMatrices[globalID]
                     );
                 }
 

@@ -58,8 +58,7 @@ void PhysicsSystem::Init() {
 
 void PhysicsSystem::update(
     float dt,
-    TransformStorage& transforms
-   
+    ComponentStorage<TransformComponent>& transforms
 ) {
 
     scene->simulate(dt);
@@ -69,7 +68,7 @@ void PhysicsSystem::update(
 
 }
 
-void PhysicsSystem::UpdateTransforms(TransformStorage& transforms) {
+void PhysicsSystem::UpdateTransforms(ComponentStorage<TransformComponent>& transforms) {
     for (auto& [entity, physicsActor] : actors)
     {
         if (!physicsActor->actor)
@@ -342,7 +341,7 @@ void PhysicsSystem::DeleteCollider(
 
 void PhysicsSystem::DeleteRigidBody(
     const UUID& entity,
-    ColliderStorage& colliders
+    ComponentStorage<ColliderComponent>& colliders
 )
 {
     auto it = actors.find(entity);

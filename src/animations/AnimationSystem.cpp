@@ -7,78 +7,85 @@ namespace Lengine
     // TODO : Optimise using SoA and parallel animation
 
     void AnimationSystem::Update(
-        AnimationComponentStorage& animComponent,
-        SkeletonComponentStorage& skeletons,
+        ComponentStorage<AnimationComponent>& animComponents,
+        ComponentStorage<SkeletonComponent>& skeletons,
         float dt
     )
     {
-        auto& anims = animComponent.GetAll();
-        const auto& entities = animComponent.GetEntities();
-
-        for (size_t i = 0; i < anims.size(); i++)
+        for (auto& [entity, anim] : animComponents.All())
         {
-
-            AnimationComponent& anim = anims[i];
-            UUID entity = entities[i];
-
             if (anim.currentAnimationID == UUID::Null)
                 continue;
 
-            Animation* animation = assetManager.GetAnimation(anim.currentAnimationID);
+            Animation* animation =
+                assetManager.GetAnimation(anim.currentAnimationID);
+
             if (!animation)
                 continue;
 
-            // Advance time
-            anim.currentTime += dt * animation->ticksPerSecond * anim.playbackSpeed;
-         
+            // Advance animation time
+            anim.currentTime +=
+                dt *
+                animation->ticksPerSecond *
+                anim.playbackSpeed;
 
             if (anim.looping)
             {
-                anim.currentTime = fmod(anim.currentTime, animation->duration);
+                anim.currentTime =
+                    fmod(anim.currentTime, animation->duration);
             }
             else
             {
-                anim.currentTime = std::min(anim.currentTime, animation->duration);
+                anim.currentTime =
+                    std::min(anim.currentTime, animation->duration);
             }
 
-
-            ApplyAnimation(skeletons, entity, anim, anim.currentTime);
+            ApplyAnimation(
+                skeletons,
+                entity,
+                anim,
+                anim.currentTime);
         }
     }
+
     void AnimationSystem::ApplyAnimation(
-        SkeletonComponentStorage& skeletons,
+        ComponentStorage<SkeletonComponent>& skeletons,
         UUID entity,
         AnimationComponent& anim,
         float time)
     {
+        if (!skeletons.Has(entity))
+            return;
+
         auto& sk = skeletons.Get(entity);
+
         if (sk.skeletonID == UUID::Null)
-        {
             return;
-        }
 
-        Skeleton* skeleton = assetManager.GetSkeleton(sk.skeletonID);
+        Skeleton* skeleton =
+            assetManager.GetSkeleton(sk.skeletonID);
+
         if (!skeleton)
-        {
             return;
-        }
 
-     
-        Animation* animation = assetManager.GetAnimation(anim.currentAnimationID);
+        Animation* animation =
+            assetManager.GetAnimation(anim.currentAnimationID);
+
         if (!animation)
-        {
             return;
+
+        if (anim.finalBoneMatrices.size() != skeleton->bones.size())
+        {
+            anim.finalBoneMatrices.resize(
+                skeleton->bones.size(),
+                glm::mat4(1.0f));
         }
 
-        // Ensure finalBoneMatrices array is the correct size and initialized to identity
-        if (anim.finalBoneMatrices.size() != skeleton->bones.size())
-            anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
-
-
-        // Compute the bone transforms
-        ComputeBoneTransforms(*skeleton, *animation, time, anim.finalBoneMatrices);
-
-
+        ComputeBoneTransforms(
+            *skeleton,
+            *animation,
+            time,
+            anim.finalBoneMatrices);
     }
 
     void AnimationSystem::ComputeBoneTransforms(

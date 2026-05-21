@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/UUID.h"
+
 #include <glm/glm.hpp>
 
 #define MAX_LIGHTS 32

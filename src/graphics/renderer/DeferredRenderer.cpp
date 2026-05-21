@@ -152,7 +152,6 @@ void DeferredRenderer::RenderGeometry(
 
         const TransformComponent& t = transforms.Get(entityID);
         const MeshFilter& mf = meshFilters.Get(entityID);
-        const AnimationComponent* anim = animations.Get(mf.rootParent);
 
 
         if (mf.HasPendingSubmesh()) continue;
@@ -168,26 +167,35 @@ void DeferredRenderer::RenderGeometry(
         }
 
         // Animation
-        if (mesh && anim && anim->currentAnimationID != UUID::Null && anim->finalBoneMatrices.size())
-        {
-            for (int i = 0; i < mesh->bonePalette.size(); i++)
-            {
-                int globalID = mesh->bonePalette[i];
+        geomShader->setBool("useSkeleton", false);
 
-                geomShader->setMat4(
-                    "finalBonesMatrices[" + std::to_string(i) + "]",
-                    anim->finalBoneMatrices[globalID]
-                );
+
+        if (animations.Has(mf.rootParent)) {
+            const AnimationComponent& anim = animations.Get(mf.rootParent);
+
+            if (mesh && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
+            {
+                for (int i = 0; i < mesh->bonePalette.size(); i++)
+                {
+                    int globalID = mesh->bonePalette[i];
+
+                    geomShader->setMat4(
+                        "finalBonesMatrices[" + std::to_string(i) + "]",
+                        anim.finalBoneMatrices[globalID]
+                    );
+                }
+
+                geomShader->setBool("useSkeleton", true);
+
+            }
+            else {
+                geomShader->setBool("useSkeleton", false);
+
             }
 
-            geomShader->setBool("useSkeleton", true);
-
         }
-        else {
-            geomShader->setBool("useSkeleton", false);
-
-        }
-
+            
+      
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
 
@@ -314,7 +322,7 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     // LIGHTING
     uint32_t lightNum = 0;
 
-    for (const auto& [id, light] : lightComponents.GetAll())
+    for (const auto& [id, light] : lightComponents.All())
     {
         if (!transforms.Has(id))
             continue;
@@ -407,20 +415,20 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     shader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
     shader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
-    if (lightComponents.GetDirectionalShadowCasteer() != UUID::Null
-        && transforms.Has(lightComponents.GetDirectionalShadowCasteer())
+    if (activeScene->GetDirectionalShadowCaster() != UUID::Null
+        && transforms.Has(activeScene->GetDirectionalShadowCaster())
         )
     {
         bindShadowMapUniforms(
             *shader,
             *ctx.shadowMap,
-            transforms.Get(lightComponents.GetDirectionalShadowCasteer()),
+            transforms.Get(activeScene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
     }
 
-    if (lightComponents.GetPointShadowCasteer() != UUID::Null
-        && transforms.Has(lightComponents.GetPointShadowCasteer())
+    if (activeScene->GetPointShadowCaster() != UUID::Null
+        && transforms.Has(activeScene->GetPointShadowCaster())
         )
     {
 

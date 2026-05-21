@@ -29,30 +29,38 @@ uniform bool useSkeleton;
 void main()
 {
     // ---- SKINNING ----
-   mat4 skinMatrix = mat4(1.0); // Identity by default
-    
+   mat4 skinMatrix = mat4(1.0);
 
     if(useSkeleton)
     {
+        bool validBone = false;
 
         for(int i = 0; i < MAX_BONE_INFLUENCE; i++)
         {
-            if(boneIds[i] >= 0 && boneIds[i] < MAX_BONES && weights[i] > 0.0)
+            if(boneIds[i] >= 0 &&
+            boneIds[i] < MAX_BONES &&
+            weights[i] > 0.0)
             {
-                skinMatrix = mat4(0.0);
+                validBone = true;
             }
         }
 
-        for(int i = 0; i < MAX_BONE_INFLUENCE; i++)
-        {   
-            if(boneIds[i] >= 0 && boneIds[i] < MAX_BONES)
-                skinMatrix += finalBonesMatrices[boneIds[i]] * weights[i];
+        if(validBone)
+        {
+            skinMatrix = mat4(0.0);
+
+            for(int i = 0; i < MAX_BONE_INFLUENCE; i++)
+            {
+                if(boneIds[i] >= 0 &&
+                boneIds[i] < MAX_BONES)
+                {
+                    skinMatrix +=
+                        finalBonesMatrices[boneIds[i]]
+                        * weights[i];
+                }
+            }
         }
-
-        float weightSum = weights.x + weights.y + weights.z + weights.w;
-        skinMatrix /= weightSum;
     }
-
 
     // Compute final vertex position
     vec4 skinnedPosition = skinMatrix * vec4(aPos, 1.0);

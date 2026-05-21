@@ -1,10 +1,8 @@
 #pragma once
 
-#include "../scene/components/AnimationComponentStorage.h"
-#include "../scene/components/SkeletonComponentStorage.h"
+#include "scene/components/ComponentStorage.h"
 
-
-#include "../resources/AssetManager.h"
+#include "resources/AssetManager.h"
 
 namespace Lengine
 {
@@ -15,8 +13,8 @@ namespace Lengine
         AnimationSystem(AssetManager& assetManager) : assetManager(assetManager) {}
 
         void Update(
-            AnimationComponentStorage& animComponent,
-            SkeletonComponentStorage& skeletons,
+            ComponentStorage<AnimationComponent>& animations,
+            ComponentStorage<SkeletonComponent>& skeletons,
             float dt
         );
 
@@ -24,7 +22,7 @@ namespace Lengine
         AssetManager& assetManager;
 
         void ApplyAnimation(
-            SkeletonComponentStorage& skeletons,
+            ComponentStorage<SkeletonComponent>& skeletons,
             UUID entity,
             AnimationComponent& anim,
             float time

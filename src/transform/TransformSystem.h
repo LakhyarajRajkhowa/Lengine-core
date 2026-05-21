@@ -7,8 +7,8 @@
 #include <glm/gtx/quaternion.hpp>   // eulerAngles, angleAxis helpers
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../scene/components/TransformStorage.h"
-#include "../scene/components/HierarchyStorage.h"
+#include "scene/components/ComponentStorage.h"
+
 #include "../utils/UUID.h"
 
 namespace Lengine {
@@ -54,8 +54,8 @@ namespace Lengine {
         }
 
         void Update(
-            TransformStorage& transforms,
-            const HierarchyStorage& hierarchys,
+            ComponentStorage<TransformComponent>& transforms,
+            const ComponentStorage<HierarchyComponent>& hierarchys,
             const std::vector<UUID> rootEntites
         );
 
@@ -63,8 +63,8 @@ namespace Lengine {
             UUID entityID,
             const glm::mat4& parentWorld,
             bool parentWorldDirty,
-            TransformStorage& transforms,
-            const HierarchyStorage& hierarchys
+            ComponentStorage<TransformComponent>& transforms,
+            const ComponentStorage<HierarchyComponent>& hierarchys
         );
        
     };

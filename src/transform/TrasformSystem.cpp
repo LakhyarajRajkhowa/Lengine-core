@@ -5,8 +5,8 @@ using namespace Lengine;
 bool TransformSystem::Dirty = true;
 
 void TransformSystem::Update(
-	TransformStorage& transforms,
-	const HierarchyStorage& hierarchys,
+    ComponentStorage<TransformComponent>& transforms,
+    const ComponentStorage<HierarchyComponent>& hierarchys,
 	const std::vector<UUID> rootEntities
 ) {
     if (TransformSystem::Dirty) {
@@ -25,8 +25,8 @@ void TransformSystem::UpdateWorldTransformRecursive(
     UUID entityID,
     const glm::mat4& parentWorld,
     bool parentWorldDirty,
-    TransformStorage& transforms,
-    const HierarchyStorage& hierarchys
+    ComponentStorage<TransformComponent>& transforms,
+    const ComponentStorage<HierarchyComponent>& hierarchys
 ) {
    
     if (!transforms.Has(entityID)) return;

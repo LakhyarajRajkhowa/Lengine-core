@@ -2,6 +2,8 @@
 
 #include "utils/C++20.h"
 
+#include <iostream>
+
 using namespace Lengine;
 
   
@@ -157,8 +159,8 @@ using namespace Lengine;
         //// -------- ANIMATION (root) --------
 
         if (Animations().Has(originalEntityId)) {
-            AnimationComponent* anim = Animations().Get(originalEntityId);
-           Animations().Add(entityId , AnimationComponent(anim->animationIDs));
+            AnimationComponent& anim = Animations().Get(originalEntityId);
+           Animations().Add(entityId , AnimationComponent(anim.animationIDs));
         }
 
         // ----- COLLIDER ----
@@ -389,27 +391,74 @@ using namespace Lengine;
             counter++;
         }
     }
-
     std::unique_ptr<Scene> Scene::Clone()
     {
         auto newScene = std::make_unique<Scene>(name + "_runtime", UUID());
 
         std::unordered_map<UUID, UUID> entityMap;
 
-        // 1. Entities
+        // Entities 
         for (const auto& e : entities)
         {
             UUID newID = UUID();
+
             entityMap[*e] = newID;
 
-            newScene->addEntity(std::make_unique<Entity>(newID), *e);
+            newScene->entities.push_back(
+                std::make_unique<Entity>(newID)
+            );
         }
 
-        // 2. Roots
-        for (auto root : rootEntities)
-            newScene->rootEntities.push_back(entityMap[root]);
+        // Roots
+        for (UUID root : rootEntities)
+        {
+            newScene->rootEntities.push_back(
+                entityMap[root]
+            );
+        }
 
-        // 3. Components
+        // Rebuild Hierarchies
+        newScene->hierarchys.Clear();
+
+        for (const auto& [oldEntity, oldComp] : hierarchys.All())
+        {
+            auto entityIt = entityMap.find(oldEntity);
+            if (entityIt == entityMap.end())
+                continue;
+
+            UUID newEntity = entityIt->second;
+            HierarchyComponent newComp;
+
+            if (oldComp.parent != UUID::Null)
+            {
+                auto parentIt = entityMap.find(oldComp.parent);
+
+                if (parentIt != entityMap.end())
+                    newComp.parent = parentIt->second;
+                else
+                    newComp.parent = UUID::Null;
+            }
+            else
+            {
+                newComp.parent = UUID::Null;
+            }
+
+            newComp.children.reserve(oldComp.children.size());
+
+            for (const UUID& oldChild : oldComp.children)
+            {
+                auto childIt = entityMap.find(oldChild);
+
+                if (childIt != entityMap.end())
+                {
+                    newComp.children.push_back(childIt->second);
+                }
+            }
+            newScene->hierarchys.Add(newEntity, std::move(newComp));
+        }
+
+
+        // Components
         newScene->transforms.CloneFrom(transforms, entityMap);
         newScene->meshFilters.CloneFrom(meshFilters, entityMap);
         newScene->meshRenderers.CloneFrom(meshRenderers, entityMap);
@@ -421,9 +470,41 @@ using namespace Lengine;
         newScene->hierarchys.CloneFrom(hierarchys, entityMap);
         newScene->lights.CloneFrom(lights, entityMap);
 
+        // Copy Primary camera
+        UUID oldPrimary = primaryCamera;
+        
+        if (oldPrimary != UUID::Null)
+        {
+            auto it = entityMap.find(oldPrimary);
+            if (it != entityMap.end())
+            {
+                newScene->SetPrimaryCamera(it->second);
+            }
+        }
+
+        // Copy Shadow Casters
+        UUID oldDirectionalShadowCaster = directionalShadowCaster;
+        if (oldDirectionalShadowCaster != UUID::Null) {
+
+            auto it = entityMap.find(oldDirectionalShadowCaster);
+            if (it != entityMap.end())
+            {
+                newScene->SetDirectionalShadowCaster(it->second);
+            }
+        }
+
+        UUID oldPointShadowCaster = pointShadowCaster;
+        if (oldPointShadowCaster != UUID::Null) {
+
+            auto it = entityMap.find(oldPointShadowCaster);
+            if (it != entityMap.end())
+            {
+                newScene->SetPointShadowCaster(it->second);
+            }
+        }
+        
         return newScene;
     }
-
 
 
 

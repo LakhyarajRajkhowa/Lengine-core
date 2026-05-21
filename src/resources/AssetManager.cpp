@@ -1071,13 +1071,13 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
         if (scene.Animations().Has(entityID))
         {
-            const AnimationComponent* a = scene.Animations().Get(entityID);
+            const AnimationComponent& a = scene.Animations().Get(entityID);
 
             json jAnim;
 
             // Animation IDs
             json animIDs = json::array();
-            for (const auto& id : a->animationIDs)
+            for (const auto& id : a.animationIDs)
             {
                 animIDs.push_back(id.toUint64()); // or your UUID → string method
             }
@@ -1085,12 +1085,12 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jAnim["animationIDs"] = animIDs;
 
             // Current animation
-            jAnim["currentAnimationID"] = a->currentAnimationID.toUint64();
+            jAnim["currentAnimationID"] = a.currentAnimationID.toUint64();
 
             // Playback state
-            jAnim["currentTime"] = a->currentTime;
-            jAnim["playbackSpeed"] = a->playbackSpeed;
-            jAnim["looping"] = a->looping;
+            jAnim["currentTime"] = a.currentTime;
+            jAnim["playbackSpeed"] = a.playbackSpeed;
+            jAnim["looping"] = a.looping;
 
             // Helper to save mat4 array
             auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
@@ -1107,7 +1107,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
                 return arr;
                 };
 
-            jAnim["finalBoneMatrices"] = SaveMat4Array(a->finalBoneMatrices);
+            jAnim["finalBoneMatrices"] = SaveMat4Array(a.finalBoneMatrices);
 
             jEntity["animation"] = jAnim;
         }

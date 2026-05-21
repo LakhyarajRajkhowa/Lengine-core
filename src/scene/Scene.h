@@ -3,19 +3,7 @@
 #include "resources/TextureCache.h"
 
 #include "scene/Entity.h"
-#include "scene/components/MeshRendererStorage.h"
-#include "scene/components/MeshFilterStorage.h"
-#include "scene/components/LightStorage.h"
-#include "scene/components/TransformStorage.h"
-#include "scene/components/HierarchyStorage.h"
-#include "scene/components/NameTagComponentStorage.h"
-#include "scene/components/SkeletonComponentStorage.h"
-#include "scene/components/AnimationComponentStorage.h"
-#include "scene/components/CameraComponentStorage.h"
-#include "scene/components/MovementComponentStorage.h"
-#include "scene/components/ControllerComponentStorage.h"
-#include "scene/components/ColliderComponentStorage.h"
-#include "scene/components/RigidBodyStorage.h"
+#include "scene/components/ComponentStorage.h"
 
 #include "assets/MaterialRegistry.h"
 
@@ -41,15 +29,13 @@ namespace Lengine {
         );
 
         UUID GetRootParent(const UUID& entityID);
-
         UUID DuplicateEntityRecursive(UUID originalID, UUID newParent, UUID newRoot);
         UUID DuplicateHierarchy(UUID rootID);
 
-
+        Entity* getEntityByID(const UUID& UUID);
         Entity* addEntity(std::unique_ptr<Entity> entity, const UUID originalEntityId);
        
         const  Entity* getEntityByID(const UUID& id) const;
-        Entity* getEntityByID(const UUID& UUID);
 
 
         const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
@@ -65,15 +51,14 @@ namespace Lengine {
         bool IsRootEntity(const UUID& id)
         {
             const auto& roots = GetRootEntities();
-
             return std::find(roots.begin(), roots.end(), id) != roots.end();
         }
 
 
- 
+        std::string getName() { return name; }
         const std::string& getName() const { return name; }
         void rename(const std::string newName) { name = newName; }
-        std::string getName() { return name; }
+
         UUID getUUID() const { return sceneID; }
 
         bool HasChildren(UUID entityID) const;
@@ -87,98 +72,185 @@ namespace Lengine {
         std::unique_ptr<Scene> Clone();
        
  
-        const MeshRendererStorage& MeshRenderers() const {
+        const ComponentStorage<MeshRenderer>& MeshRenderers() const
+        {
             return meshRenderers;
         }
 
-        MeshRendererStorage& MeshRenderers() {
+        ComponentStorage<MeshRenderer>& MeshRenderers()
+        {
             return meshRenderers;
         }
-
-        const MeshFilterStorage& MeshFilters() const {
+        const  ComponentStorage<MeshFilter>& MeshFilters() const {
             return meshFilters;
         }
 
-        MeshFilterStorage& MeshFilters() {
+        ComponentStorage<MeshFilter>& MeshFilters() {
             return meshFilters;
         }
 
-        const LightStorage& Lights() const {
-            return lights;
-        }
-
-        LightStorage& Lights() {
-            return lights;
-        }
-
-        const TransformStorage& Transforms() const {
+        const ComponentStorage<TransformComponent>& Transforms() const
+        {
             return transforms;
         }
 
-        TransformStorage& Transforms() {
+        ComponentStorage<TransformComponent>& Transforms()
+        {
             return transforms;
         }
 
-        const HierarchyStorage& Hierarchys() const {
+
+        const ComponentStorage<HierarchyComponent>& Hierarchys() const
+        {
             return hierarchys;
         }
 
-        HierarchyStorage& Hierarchys() {
+        ComponentStorage<HierarchyComponent>& Hierarchys()
+        {
             return hierarchys;
         }
 
-        const NameTagComponentStorage& NameTags() const {
+
+        const ComponentStorage<NameTagComponent>& NameTags() const
+        {
             return nameTags;
         }
 
-        NameTagComponentStorage& NameTags() {
+        ComponentStorage<NameTagComponent>& NameTags()
+        {
             return nameTags;
         }
 
-        const SkeletonComponentStorage& Skeletons() const {
+
+        const ComponentStorage<SkeletonComponent>& Skeletons() const
+        {
             return skeletons;
         }
 
-         SkeletonComponentStorage& Skeletons()  {
+        ComponentStorage<SkeletonComponent>& Skeletons()
+        {
             return skeletons;
         }
 
-        const AnimationComponentStorage& Animations() const {
+
+        const ComponentStorage<AnimationComponent>& Animations() const
+        {
             return animations;
         }
 
-         AnimationComponentStorage& Animations()  {
+        ComponentStorage<AnimationComponent>& Animations()
+        {
             return animations;
         }
 
-        CameraComponentStorage& Cameras() {
+
+        const ComponentStorage<CameraComponent>& Cameras() const
+        {
             return cameras;
         }
 
-        const CameraComponentStorage& Cameras() const {
+        ComponentStorage<CameraComponent>& Cameras()
+        {
             return cameras;
         }
 
-        ColliderStorage& Colliders() {
+
+        const ComponentStorage<ControllerComponent>& Controllers() const
+        {
+            return controllers;
+        }
+
+        ComponentStorage<ControllerComponent>& Controllers()
+        {
+            return controllers;
+        }
+
+
+        const ComponentStorage<ColliderComponent>& Colliders() const
+        {
             return colliders;
         }
 
-        const ColliderStorage& Colliders() const {
+        ComponentStorage<ColliderComponent>& Colliders()
+        {
             return colliders;
         }
 
 
-        RigidbodyStorage& Rigidbodies() {
+        const ComponentStorage<RigidbodyComponent>& Rigidbodies() const
+        {
             return rigidbodies;
         }
 
-        const RigidbodyStorage& Rigidbodies() const {
+        ComponentStorage<RigidbodyComponent>& Rigidbodies()
+        {
             return rigidbodies;
         }
 
+
+        const ComponentStorage<Light>& Lights() const
+        {
+            return lights;
+        }
+
+        ComponentStorage<Light>& Lights()
+        {
+            return lights;
+        }
+
+
+        const UUID& GetDirectionalShadowCaster() const {
+            return directionalShadowCaster;
+        }
+
+        void Scene::SetDirectionalShadowCaster(UUID entity)
+        {
+            // Clear old one
+            if (directionalShadowCaster != UUID::Null &&
+                lights.Has(directionalShadowCaster))
+            {
+                lights.Get(directionalShadowCaster).castShadow = false;
+            }
+
+            directionalShadowCaster = entity;
+
+            // Set new one
+            if (directionalShadowCaster != UUID::Null &&
+                lights.Has(directionalShadowCaster))
+            {
+                lights.Get(directionalShadowCaster).castShadow = true;
+            }
+        }
+
+        const UUID& GetPointShadowCaster() const {
+            return pointShadowCaster;
+        }
+
+        void Scene::SetPointShadowCaster(UUID entity)
+        {
+            if (pointShadowCaster != UUID::Null &&
+                lights.Has(pointShadowCaster))
+            {
+                lights.Get(pointShadowCaster).castShadow = false;
+            }
+
+            pointShadowCaster = entity;
+
+            if (pointShadowCaster != UUID::Null &&
+                lights.Has(pointShadowCaster))
+            {
+                lights.Get(pointShadowCaster).castShadow = true;
+            }
+        }
+
+        const UUID& GetPrimaryCamera() const {
+            return primaryCamera;
+        }
+
+        void SetPrimaryCamera(const UUID& id) {
+            primaryCamera = id;
+        }
         
-
-
         std::string GenerateDuplicateName(Scene* scene, const std::string& baseName);
 
     private:
@@ -187,19 +259,22 @@ namespace Lengine {
         std::vector<std::unique_ptr<Entity>> entities;
         std::vector<UUID> rootEntities;
 
+        UUID primaryCamera = UUID::Null;
+        UUID directionalShadowCaster = UUID::Null;
+        UUID pointShadowCaster = UUID::Null;
 
-        MeshRendererStorage meshRenderers;
-        MeshFilterStorage meshFilters;
-        LightStorage lights;
-        TransformStorage transforms;
-        HierarchyStorage hierarchys;
-        NameTagComponentStorage nameTags;
-        SkeletonComponentStorage skeletons;
-        AnimationComponentStorage animations;
-        CameraComponentStorage cameras;
-        ControllerStorage controllers;
-        ColliderStorage colliders;
-        RigidbodyStorage rigidbodies;
+        ComponentStorage<Light> lights;
+        ComponentStorage<HierarchyComponent> hierarchys;
+        ComponentStorage<CameraComponent> cameras;
+        ComponentStorage<MeshRenderer> meshRenderers;
+        ComponentStorage<MeshFilter> meshFilters;
+        ComponentStorage<TransformComponent> transforms;
+        ComponentStorage<NameTagComponent> nameTags;
+        ComponentStorage<SkeletonComponent> skeletons;
+        ComponentStorage<AnimationComponent> animations;
+        ComponentStorage<ControllerComponent> controllers;
+        ComponentStorage<ColliderComponent> colliders;
+        ComponentStorage<RigidbodyComponent> rigidbodies;
 
     };
 }

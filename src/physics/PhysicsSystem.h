@@ -4,9 +4,6 @@
 
 using namespace physx;
 
-#include "scene/components/RigidBodyStorage.h"
-#include "scene/components/ColliderComponentStorage.h"
-#include "scene/components/TransformStorage.h"
 
 #include "transform/TransformSystem.h"
 
@@ -44,7 +41,7 @@ namespace Lengine {
         void Init();
         void update(
             float dt,
-            TransformStorage& transforms
+            ComponentStorage<TransformComponent>& transforms
             );
         void shutdown();
 
@@ -54,14 +51,14 @@ namespace Lengine {
 
         void PhysicsSystem::RemoveActor_collider(
             const UUID& entity,
-            ColliderStorage& colliders,
-            RigidbodyStorage& rigidbodies
+            ComponentStorage<ColliderComponent>& colliders,
+            ComponentStorage<RigidbodyComponent>& rigidbodies
         );
 
         void PhysicsSystem::RemoveActor_rigidbody(
             const UUID& entity,
-            ColliderStorage& colliders,
-            RigidbodyStorage& rigidbodies
+            ComponentStorage<ColliderComponent>& colliders,
+            ComponentStorage<RigidbodyComponent>& rigidbodies
         );
 
         void AddCollider(
@@ -88,8 +85,8 @@ namespace Lengine {
 
         void PhysicsSystem::DeleteRigidBody(
             const UUID& entity,
-            ColliderStorage& colliders
-        );
+            ComponentStorage<ColliderComponent>& colliders
+            );
 
         std::unordered_map<UUID, std::unique_ptr<PhysicsActor>>&  GetActors() { return actors; }
         const std::unordered_map<UUID, std::unique_ptr<PhysicsActor>>& GetActors() const { return actors; }
@@ -106,7 +103,7 @@ namespace Lengine {
 
         std::unordered_map<UUID, std::unique_ptr<PhysicsActor>> actors;
 
-        void UpdateTransforms(TransformStorage& trasnforms);
+        void UpdateTransforms(ComponentStorage<TransformComponent>& transforms);
         void CreateGroundPlane();
 
 
