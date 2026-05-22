@@ -56,11 +56,11 @@ namespace Lengine {
         void Update(
             ComponentStorage<TransformComponent>& transforms,
             const ComponentStorage<HierarchyComponent>& hierarchys,
-            const std::vector<UUID> rootEntites
+            const std::vector<Entity> rootEntites
         );
 
         void UpdateWorldTransformRecursive(
-            UUID entityID,
+            Entity entityID,
             const glm::mat4& parentWorld,
             bool parentWorldDirty,
             ComponentStorage<TransformComponent>& transforms,

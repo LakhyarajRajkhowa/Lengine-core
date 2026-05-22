@@ -17,9 +17,9 @@ namespace Lengine {
     class Light {
     public:
         Light() = default;
-        Light(UUID entityID) : id(entityID) {}
+        Light(Entity entityID) : id(entityID) {}
 
-        UUID id = UUID::Null;
+        Entity id = NullEntity;
         LightType type = LightType::Directional;
 
         glm::vec3 color = glm::vec3(0.10f);

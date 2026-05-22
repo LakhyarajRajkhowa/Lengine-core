@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../utils/UUID.h"
+#include "scene/Entity.h"
 
 namespace Lengine {
     struct HierarchyComponent
     {
-        UUID parent = UUID::Null;
-        std::vector<UUID> children;
+        Entity parent = NullEntity;
+        std::vector<Entity> children;
     };
 
 }

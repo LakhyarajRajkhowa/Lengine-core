@@ -7,11 +7,11 @@
 namespace Lengine {
 
 	// so basically this will be a tree structure
-	// rootnode pointing to  children and so on...
+	// rootnode pointing to  children and so on
 
 	// this exist only at importing time
 	// at runtime PrefabNode -> Entity
-	// so memory will be cleared after importing (no mem wastage ig)
+	// so memory will be cleared after importing 
 	class PrefabNode {
 	public:
 		std::string name = "NewPrefabNode";

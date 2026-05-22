@@ -23,7 +23,7 @@ namespace Lengine
 
         void ApplyAnimation(
             ComponentStorage<SkeletonComponent>& skeletons,
-            UUID entity,
+            Entity entity,
             AnimationComponent& anim,
             float time
         );

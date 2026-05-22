@@ -9,27 +9,28 @@ using namespace Lengine;
   
 
     Entity* Scene::createEntity_root (
-        const std::string& name,
-        UUID entityID
-    ) {
-        auto entity = std::make_unique<Entity>(entityID);
-        nameTags.Add(entityID, NameTagComponent(name));
+        const std::string& name   
+    ) 
+    {
+        Entity id = nextEntityID++;
+        auto entity = std::make_unique<Entity>(id);
+        nameTags.Add(id, NameTagComponent(name));
 
         Entity* entityPtr = entity.get();
 
         entities.push_back(std::move(entity));
 
-        rootEntities.push_back(entityID);
+        rootEntities.push_back(id);
 
         return entityPtr;
     }
 
     Entity* Scene::createEntity(
-        const std::string& name,
-        UUID entityID
+        const std::string& name
     ) {
-        auto entity = std::make_unique<Entity>(entityID);
-        nameTags.Add(entityID, NameTagComponent(name));
+        Entity id = nextEntityID++;
+        auto entity = std::make_unique<Entity>(id);
+        nameTags.Add(id, NameTagComponent(name));
 
         Entity* entityPtr = entity.get();
 
@@ -37,18 +38,18 @@ using namespace Lengine;
 
         return entityPtr;
     }
-    UUID Scene::DuplicateEntityRecursive(UUID originalID, UUID newParent, UUID newRoot)
+    Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot)
     {
-        auto entity = std::make_unique<Entity>(UUID());
+        auto entity = std::make_unique<Entity>(nextEntityID++);
 
         Entity* newEntity = addEntity(std::move(entity), originalID);
-        UUID newID = *newEntity;
+        Entity newID = *newEntity;
 
-        if (newRoot == UUID::Null)
+        if (newRoot == NullEntity)
             newRoot = newID;
 
         // hierarchy
-        if (newParent != UUID::Null)
+        if (newParent != NullEntity)
         {
             auto& h = hierarchys.Add(newID);
             h.parent = newParent;
@@ -75,7 +76,7 @@ using namespace Lengine;
         {
             const auto& children = hierarchys.Get(originalID).children;
 
-            for (UUID child : children)
+            for (Entity child : children)
             {
                 DuplicateEntityRecursive(child, newID, newRoot);
             }
@@ -84,23 +85,23 @@ using namespace Lengine;
         return newID;
     }
 
-    UUID Scene::DuplicateHierarchy(UUID rootID)
+    Entity Scene::DuplicateHierarchy(Entity rootID)
     {
-        return DuplicateEntityRecursive(rootID, UUID::Null, UUID::Null);
+        return DuplicateEntityRecursive(rootID, NullEntity, NullEntity);
     }
 
-    Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const UUID originalEntityId)
+    Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId)
     {
         if (!entity)
             return nullptr;
 
         // Ensure entity has a valid UUID
-        if (entity->isNull())
+        if (entity == NullEntity)
         {
-            *entity = UUID();
+            *entity = nextEntityID++;
         }
 
-        UUID entityId = *entity;
+        Entity entityId = *entity;
 
         // Copy Transforms
         if (Transforms().Has(originalEntityId)) {
@@ -123,7 +124,8 @@ using namespace Lengine;
             const MeshFilter& oldMf = MeshFilters().Get(originalEntityId);
             meshFilters.Add(entityId, MeshFilter(oldMf.meshID, entityId));
 
-            std::cout << "root: " << GetRootParent(entityId) << std::endl;
+            
+            std::cout << " Scene.cpp :: root: " << GetRootParent(entityId) << std::endl;
 
         }
 
@@ -175,15 +177,15 @@ using namespace Lengine;
         return entities.back().get();
     }
 
-    UUID Scene::GetRootParent(const UUID& entityID)
+    Entity Scene::GetRootParent(const Entity& entityID)
     {
-        UUID currentID = entityID;
+        Entity currentID = entityID;
 
         while (Hierarchys().Has(currentID))
         {
             auto& h = Hierarchys().Get(currentID);
 
-            if (h.parent == UUID::Null)
+            if (h.parent == NullEntity)
                 break;
 
             currentID = h.parent;
@@ -192,7 +194,7 @@ using namespace Lengine;
         return currentID;
     }
 
-    void Scene::RemoveEntity(const UUID id)
+    void Scene::RemoveEntity(const Entity id)
     {
         // Remove from hierarchy first (important)
         if (hierarchys.Has(id))
@@ -200,17 +202,17 @@ using namespace Lengine;
             auto& h = hierarchys.Get(id);
 
             // Detach children → make them roots
-            for (UUID child : h.children)
+            for (Entity child : h.children)
             {
                 if (hierarchys.Has(child))
                 {
-                    hierarchys.Get(child).parent = UUID::Null;
+                    hierarchys.Get(child).parent = NullEntity;
                     rootEntities.push_back(child);
                 }
             }
 
             // Remove from parent children list
-            if (h.parent != UUID::Null && hierarchys.Has(h.parent))
+            if (h.parent != NullEntity && hierarchys.Has(h.parent))
             {
                 auto& parentH = hierarchys.Get(h.parent);
                 parentH.children.erase(
@@ -255,12 +257,12 @@ using namespace Lengine;
 
     }
 
-    void Scene::RemoveEntityRecursive(UUID id)
+    void Scene::RemoveEntityRecursive(Entity id)
     {
         if (hierarchys.Has(id))
         {
             auto children = hierarchys.Get(id).children;
-            for (UUID child : children)
+            for (Entity child : children)
                 RemoveEntityRecursive(child);
         }
 
@@ -269,7 +271,7 @@ using namespace Lengine;
 
 
 
-    const Entity* Scene::getEntityByID(const UUID& id) const {
+    const Entity* Scene::getEntityByID(const Entity& id) const {
         for (auto& entity : entities) {
             if (*entity == id) {
                 return entity.get();
@@ -277,7 +279,10 @@ using namespace Lengine;
         }
         return nullptr;
     }
-    Entity* Scene::getEntityByID(const UUID& id) {
+    Entity* Scene::getEntityByID(const Entity& id) {
+        if (id == NullEntity)
+            return nullptr;
+
         for (auto& entity : entities) {
             if (*entity == id) {
                 return entity.get();
@@ -288,7 +293,7 @@ using namespace Lengine;
 
 
  
-    bool Scene::HasChildren(UUID entityID) const
+    bool Scene::HasChildren(Entity entityID) const
     {
         if (!hierarchys.Has(entityID))
             return false;
@@ -296,9 +301,9 @@ using namespace Lengine;
         return !hierarchys.Get(entityID).children.empty();
     }
 
-    const std::vector<UUID>& Scene::GetChildren(UUID entityID) const
+    const std::vector<Entity>& Scene::GetChildren(Entity entityID) const
     {
-        static std::vector<UUID> empty;
+        static std::vector<Entity> empty;
 
         if (!hierarchys.Has(entityID))
             return empty;
@@ -306,7 +311,7 @@ using namespace Lengine;
         return hierarchys.Get(entityID).children;
     }
 
-    void Scene::SetParent(UUID child, UUID parent)
+    void Scene::SetParent(Entity child, Entity parent)
     {
         if (!hierarchys.Has(child))
             hierarchys.Add(child);
@@ -317,7 +322,7 @@ using namespace Lengine;
         auto& childH = hierarchys.Get(child);
 
         // Remove from old parent / roots
-        if (childH.parent != UUID::Null)
+        if (childH.parent != NullEntity)
         {
             auto& oldParentH = hierarchys.Get(childH.parent);
             std20::erase(oldParentH.children, child);
@@ -340,20 +345,20 @@ using namespace Lengine;
     }
 
 
-    void Scene::MakeOrphan(UUID child)
+    void Scene::MakeOrphan(Entity child)
     {
         if (!hierarchys.Has(child))
             return;
 
         auto& h = hierarchys.Get(child);
 
-        if (h.parent != UUID::Null)
+        if (h.parent != NullEntity)
         {
             auto& parentH = hierarchys.Get(h.parent);
             std20::erase(parentH.children, child);
         }
 
-        h.parent = UUID::Null;
+        h.parent = NullEntity;
         rootEntities.push_back(child);
 
         if (transforms.Has(child))
@@ -395,12 +400,12 @@ using namespace Lengine;
     {
         auto newScene = std::make_unique<Scene>(name + "_runtime", UUID());
 
-        std::unordered_map<UUID, UUID> entityMap;
+        std::unordered_map<Entity, Entity> entityMap;
 
         // Entities 
         for (const auto& e : entities)
         {
-            UUID newID = UUID();
+            Entity newID = nextEntityID++;
 
             entityMap[*e] = newID;
 
@@ -410,7 +415,7 @@ using namespace Lengine;
         }
 
         // Roots
-        for (UUID root : rootEntities)
+        for (Entity root : rootEntities)
         {
             newScene->rootEntities.push_back(
                 entityMap[root]
@@ -426,26 +431,26 @@ using namespace Lengine;
             if (entityIt == entityMap.end())
                 continue;
 
-            UUID newEntity = entityIt->second;
+            Entity newEntity = entityIt->second;
             HierarchyComponent newComp;
 
-            if (oldComp.parent != UUID::Null)
+            if (oldComp.parent != NullEntity)
             {
                 auto parentIt = entityMap.find(oldComp.parent);
 
                 if (parentIt != entityMap.end())
                     newComp.parent = parentIt->second;
                 else
-                    newComp.parent = UUID::Null;
+                    newComp.parent = NullEntity;
             }
             else
             {
-                newComp.parent = UUID::Null;
+                newComp.parent = NullEntity;
             }
 
             newComp.children.reserve(oldComp.children.size());
 
-            for (const UUID& oldChild : oldComp.children)
+            for (const Entity& oldChild : oldComp.children)
             {
                 auto childIt = entityMap.find(oldChild);
 
@@ -471,9 +476,9 @@ using namespace Lengine;
         newScene->lights.CloneFrom(lights, entityMap);
 
         // Copy Primary camera
-        UUID oldPrimary = primaryCamera;
+        Entity oldPrimary = primaryCamera;
         
-        if (oldPrimary != UUID::Null)
+        if (oldPrimary != NullEntity)
         {
             auto it = entityMap.find(oldPrimary);
             if (it != entityMap.end())
@@ -483,8 +488,8 @@ using namespace Lengine;
         }
 
         // Copy Shadow Casters
-        UUID oldDirectionalShadowCaster = directionalShadowCaster;
-        if (oldDirectionalShadowCaster != UUID::Null) {
+        Entity oldDirectionalShadowCaster = directionalShadowCaster;
+        if (oldDirectionalShadowCaster != NullEntity) {
 
             auto it = entityMap.find(oldDirectionalShadowCaster);
             if (it != entityMap.end())
@@ -493,8 +498,8 @@ using namespace Lengine;
             }
         }
 
-        UUID oldPointShadowCaster = pointShadowCaster;
-        if (oldPointShadowCaster != UUID::Null) {
+        Entity oldPointShadowCaster = pointShadowCaster;
+        if (oldPointShadowCaster != NullEntity) {
 
             auto it = entityMap.find(oldPointShadowCaster);
             if (it != entityMap.end())

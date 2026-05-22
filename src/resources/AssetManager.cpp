@@ -89,7 +89,7 @@ void AssetManager::UpdateAllAssetViews()
 
 //  ---- SUBMESH ---
 
-void AssetManager::RequestSubmeshLoad(const UUID& meshID, const UUID& entityID)
+void AssetManager::RequestSubmeshLoad(const UUID& meshID, const Entity& entityID)
 {
     if (GetSubmesh(meshID)) {
         pendingSubmeshes.push({ entityID, meshID });
@@ -236,6 +236,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::Albedo,
                     TextureTargetType::GlobalMaterial,
                     true
@@ -259,6 +260,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::Normal,
                     TextureTargetType::GlobalMaterial,
                     false
@@ -283,6 +285,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::Metallic,
                     TextureTargetType::GlobalMaterial,
                     false
@@ -307,6 +310,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::Roughness,
                     TextureTargetType::GlobalMaterial,
                     false
@@ -330,6 +334,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::AmbientOcclusion,
                     TextureTargetType::GlobalMaterial,
                     false
@@ -353,6 +358,7 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
                 pendingTextureRequests.push({
                     texID,
                     matID,
+                    NullEntity,
                     TextureMapType::MetallicRoughness,
                     TextureTargetType::GlobalMaterial,
                     false
@@ -657,6 +663,7 @@ void AssetManager::RequestTextureLoad(
         pendingTextureRequests.push({
            texID,
            matID,
+           NullEntity,
            mapType,
            TextureTargetType::GlobalMaterial
             });
@@ -674,6 +681,7 @@ void AssetManager::RequestTextureLoad(
         pendingTextureRequests.push({
             texID,
             matID,
+            NullEntity,
             mapType,
             TextureTargetType::GlobalMaterial
             });
@@ -697,7 +705,7 @@ void AssetManager::RequestTextureLoad(
 // this one for inst material per meshrenderer
 void AssetManager::RequestTextureLoad_inst(
     const UUID& texID,
-    const UUID& entityID,
+    const Entity& entityID,
     const TextureMapType& mapType,
     bool srgb
 )
@@ -706,6 +714,7 @@ void AssetManager::RequestTextureLoad_inst(
 
         pendingTextureRequests.push({
             texID,
+            UUID::Null,
             entityID,
             mapType,
             TextureTargetType::MeshRendererInstance
@@ -723,6 +732,7 @@ void AssetManager::RequestTextureLoad_inst(
 
         pendingTextureRequests.push({
             texID,
+            UUID::Null,
             entityID,
             mapType,
             TextureTargetType::MeshRendererInstance
@@ -951,13 +961,13 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
     for (const auto& entityPtr : entities)
     {
-        const UUID entityID = *entityPtr;
+        const Entity entityID = *entityPtr;
         const std::string entityName = scene.NameTags().Get(entityID).name;
 
 
         json jEntity;
 
-        jEntity["entityID"] = entityID.toUint64();
+        jEntity["entityID"] = entityID;
         jEntity["name"] = entityName;
 
         if (scene.Transforms().Has(entityID)) {
@@ -1118,11 +1128,11 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
             json jH;
 
-            jH["parent"] = h.parent.toUint64();
+            jH["parent"] = h.parent;
 
             json children = json::array();
             for (auto& c : h.children)
-                children.push_back(c.toUint64());
+                children.push_back(c);
 
             jH["children"] = children;
 
@@ -1230,12 +1240,13 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
         for (const auto& jEntity : jEntities)
         {
             try {
-                UUID entityID = UUID(jEntity.at("entityID").get<uint64_t>());
                 std::string entityName = jEntity.at("name").get<std::string>();
+                Entity* entity = scene->createEntity(entityName);
+
+                const Entity entityID = *entity;
 
                 scene->NameTags().Add(entityID, NameTagComponent(entityName));
 
-                Entity* entity = scene->createEntity(entityName, entityID);
 
                 // ---- Transform ----
                 if (jEntity.contains("transform"))
@@ -1541,19 +1552,19 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
         for (const auto& jEntity : jScene["entities"])
         {
-            UUID id = UUID(jEntity["entityID"]);
+            Entity id = Entity(jEntity["entityID"]);
 
-            UUID parent = UUID::Null;
+            Entity parent = NullEntity;
 
             if (jEntity.contains("hierarchy"))
             {
                 const auto& jh = jEntity["hierarchy"];
 
                 if (jh.contains("parent"))
-                    parent = UUID(jh["parent"]);
+                    parent = Entity(jh["parent"]);
             }
 
-            if (parent != UUID::Null)
+            if (parent != NullEntity)
             {
                 scene->SetParent(id, parent);
             }
@@ -1710,7 +1721,7 @@ void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
         {
             RequestTextureLoad(
                 req.textureID,
-                req.targetID,
+                req.matID,
                 req.mapType,
                 req.srgb
             );
@@ -1728,7 +1739,7 @@ void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
         // 🔹 Stage 4: Safe to bind
         if (req.targetType == TextureTargetType::GlobalMaterial)
         {
-            Material* mat = GetMaterial(req.targetID);
+            Material* mat = GetMaterial(req.matID);
             if (!mat) continue;
 
             switch (req.mapType)
@@ -1749,11 +1760,11 @@ void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
         }
         else
         {
-            if (!activeScene.MeshRenderers().Has(req.targetID))
+            if (!activeScene.MeshRenderers().Has(req.entityID))
                 continue;
 
             MeshRenderer& mr =
-                activeScene.MeshRenderers().Get(req.targetID);
+                activeScene.MeshRenderers().Get(req.entityID);
 
             MaterialInstance& inst = mr.inst;
 

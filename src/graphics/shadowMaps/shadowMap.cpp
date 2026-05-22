@@ -49,11 +49,11 @@ void ShadowMap::renderDepthMap(
     const std::vector<std::unique_ptr<Entity>>& entities,
     const ComponentStorage<TransformComponent>& trs,
     const ComponentStorage<MeshFilter>& mfs,
-    const UUID& mainDirectionalLight,
+    const Entity& mainDirectionalLight,
     AssetManager& assetManager,
     const glm::vec3& camPos
 ) {
-    if (mainDirectionalLight == UUID::Null || !trs.Has(mainDirectionalLight) || prevLight != mainDirectionalLight) {
+    if (mainDirectionalLight == NullEntity || !trs.Has(mainDirectionalLight) || prevLight != mainDirectionalLight) {
 
         prevLight = mainDirectionalLight;
         // clear previous frame shadow

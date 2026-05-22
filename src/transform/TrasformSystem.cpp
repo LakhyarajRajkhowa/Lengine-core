@@ -7,12 +7,12 @@ bool TransformSystem::Dirty = true;
 void TransformSystem::Update(
     ComponentStorage<TransformComponent>& transforms,
     const ComponentStorage<HierarchyComponent>& hierarchys,
-	const std::vector<UUID> rootEntities
+	const std::vector<Entity> rootEntities
 ) {
     if (TransformSystem::Dirty) {
         const glm::mat4 identity(1.0f);
 
-        for (UUID root : rootEntities)
+        for (Entity root : rootEntities)
         {
             UpdateWorldTransformRecursive(root, identity, true, transforms, hierarchys);
         }
@@ -22,7 +22,7 @@ void TransformSystem::Update(
 }
 
 void TransformSystem::UpdateWorldTransformRecursive(
-    UUID entityID,
+    Entity entityID,
     const glm::mat4& parentWorld,
     bool parentWorldDirty,
     ComponentStorage<TransformComponent>& transforms,
@@ -49,7 +49,7 @@ void TransformSystem::UpdateWorldTransformRecursive(
 
     if (hierarchys.Has(entityID)) {
         const auto& h = hierarchys.Get(entityID);
-        for (UUID child : h.children)
+        for (Entity child : h.children)
             UpdateWorldTransformRecursive(child, t.worldMatrix, worldDirty, transforms, hierarchys);
         } 
 

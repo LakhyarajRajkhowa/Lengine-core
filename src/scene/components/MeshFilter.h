@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
 
-#include "utils/UUID.h"
+#include "scene/Entity.h"
 
 namespace Lengine
 {
@@ -15,7 +15,7 @@ namespace Lengine
         bool pendingSubmesh = false;
         UUID pendingSubmeshID = UUID::Null;
 
-        UUID rootParent = UUID::Null;
+        Entity rootParent = NullEntity;
 
         void RequestSubmesh(const UUID& id)
         {
@@ -40,7 +40,7 @@ namespace Lengine
 
         MeshFilter() = default;
 
-        MeshFilter(UUID meshID, UUID rootParent):
+        MeshFilter(UUID meshID, Entity rootParent):
             meshID(meshID),
             rootParent(rootParent)
         {}

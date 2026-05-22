@@ -50,7 +50,7 @@ namespace Lengine
 
     void AnimationSystem::ApplyAnimation(
         ComponentStorage<SkeletonComponent>& skeletons,
-        UUID entity,
+        Entity entity,
         AnimationComponent& anim,
         float time)
     {

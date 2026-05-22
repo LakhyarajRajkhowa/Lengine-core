@@ -50,46 +50,46 @@ namespace Lengine {
         PxMaterial* getDefaultMaterial() { return material; }
 
         void PhysicsSystem::RemoveActor_collider(
-            const UUID& entity,
+            const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders,
             ComponentStorage<RigidbodyComponent>& rigidbodies
         );
 
         void PhysicsSystem::RemoveActor_rigidbody(
-            const UUID& entity,
+            const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders,
             ComponentStorage<RigidbodyComponent>& rigidbodies
         );
 
         void AddCollider(
-            const UUID& entity,
+            const Entity& entity,
             ColliderComponent& collider,
             ColliderShape::Type type = ColliderShape::Type::Box
         );
 
         void AddRigidbody(
-            const UUID& entity,
+            const Entity& entity,
             RigidbodyComponent& rb
         );
 
         void PhysicsSystem::DeleteColliderShape(
-            const UUID& entity,
+            const Entity& entity,
             ColliderComponent& collider,
             size_t shapeIndex
         );
 
         void PhysicsSystem::DeleteCollider(
-            const UUID& entity,
+            const Entity& entity,
             ColliderComponent& collider
         );
 
         void PhysicsSystem::DeleteRigidBody(
-            const UUID& entity,
+            const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders
             );
 
-        std::unordered_map<UUID, std::unique_ptr<PhysicsActor>>&  GetActors() { return actors; }
-        const std::unordered_map<UUID, std::unique_ptr<PhysicsActor>>& GetActors() const { return actors; }
+        std::unordered_map<Entity, std::unique_ptr<PhysicsActor>>&  GetActors() { return actors; }
+        const std::unordered_map<Entity, std::unique_ptr<PhysicsActor>>& GetActors() const { return actors; }
 
     private:
 
@@ -101,7 +101,7 @@ namespace Lengine {
         PxMaterial* material = nullptr;
         PxPvd* gPvd = NULL;
 
-        std::unordered_map<UUID, std::unique_ptr<PhysicsActor>> actors;
+        std::unordered_map<Entity, std::unique_ptr<PhysicsActor>> actors;
 
         void UpdateTransforms(ComponentStorage<TransformComponent>& transforms);
         void CreateGroundPlane();

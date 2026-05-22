@@ -57,7 +57,7 @@ namespace Lengine {
 	};
 
 	struct PendingSubmeshRequest {
-		UUID entityID;
+		Entity entityID;
 		UUID meshID;
 	};
 
@@ -106,7 +106,7 @@ namespace Lengine {
 		const AssetMetadata* GetAssetMetaData(const UUID& uuid) const;
 
 		// SUBMESH
-		void RequestSubmeshLoad(const UUID& meshID, const UUID& entityID);
+		void RequestSubmeshLoad(const UUID& meshID, const Entity& entityID);
 		bool LoadSubmesh(const UUID& uuid);
 		bool processPendingSubmesh(const UUID& id);
 		Mesh* GetSubmesh(const UUID& id);
@@ -141,7 +141,7 @@ namespace Lengine {
 		UUID GetOrCreateTextureUUID(const std::string& path);
 		void ImportTexture(const std::string& path, const UUID& assetID);
 		void RequestTextureLoad(const UUID& texID, const UUID& matID, const TextureMapType& texMapType, bool srgb = false);
-		void RequestTextureLoad_inst(const UUID& uuid, const UUID& entityID, const TextureMapType& texMapType, bool srgb = false);
+		void RequestTextureLoad_inst(const UUID& uuid, const Entity& entityID, const TextureMapType& texMapType, bool srgb = false);
 
 		std::shared_ptr<ImageData> LoadTexture(const UUID& uuid);
 		GLTexture* loadImage(const std::string& name, const std::string& path);

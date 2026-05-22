@@ -17,7 +17,7 @@ namespace Lengine {
 			const std::vector<std::unique_ptr<Entity>>& entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
-			const UUID& mainDirectionalLight,
+			const Entity& mainDirectionalLight,
 			AssetManager& assetManager,
 			const glm::vec3& camPos
 			);
@@ -35,6 +35,6 @@ namespace Lengine {
 
 		GLSLProgram depthShader;
 
-		UUID prevLight = UUID::Null;
+		Entity prevLight = NullEntity;
 	};
 }

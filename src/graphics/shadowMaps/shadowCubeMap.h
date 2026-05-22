@@ -21,7 +21,7 @@ namespace Lengine {
 			const std::vector<std::unique_ptr<Entity>>& entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
-			const UUID& mainPointLight,
+			const Entity& mainPointLight,
 			AssetManager& assetManager
 		);
 
@@ -39,6 +39,6 @@ namespace Lengine {
 		glm::mat4 shadowProj;
 		std::vector<glm::mat4> shadowTransforms;
 
-		UUID prevLight = UUID::Null;
+		Entity prevLight = NullEntity;
 	};
 }

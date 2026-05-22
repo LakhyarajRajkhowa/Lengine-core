@@ -58,11 +58,11 @@ void ShadowCubeMap::renderDepthCubeMap(
 	const std::vector<std::unique_ptr<Entity>>& entities,
 	const ComponentStorage<TransformComponent>& trs,
 	const ComponentStorage<MeshFilter>& mfs,
-	const UUID& mainPointLight,
+	const Entity& mainPointLight,
 	AssetManager& assetManager
 )
 {
-	if (mainPointLight == UUID::Null || !trs.Has(mainPointLight) || prevLight != mainPointLight) {
+	if (mainPointLight == NullEntity || !trs.Has(mainPointLight) || prevLight != mainPointLight) {
 		prevLight = mainPointLight;
 
 		// clear previous frame shadow

@@ -1,9 +1,11 @@
 #pragma once
 
-
-#include "../utils/UUID.h"
+#include <cstdint>
 
 namespace Lengine {
-	using Entity = UUID;
-}
 
+    using Entity = uint32_t;
+
+    constexpr Entity NullEntity = 0;
+
+}

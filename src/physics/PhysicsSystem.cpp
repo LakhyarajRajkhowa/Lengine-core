@@ -117,7 +117,7 @@ void PhysicsSystem::UpdateTransforms(ComponentStorage<TransformComponent>& trans
 }
 
 void PhysicsSystem::AddCollider(
-    const UUID& entity,
+    const Entity& entity,
     ColliderComponent& collider,
     ColliderShape::Type type
 )
@@ -195,7 +195,7 @@ void PhysicsSystem::AddCollider(
 }
 
 void PhysicsSystem::AddRigidbody(
-    const UUID& entity,
+    const Entity& entity,
     RigidbodyComponent& rb
 )
 {
@@ -276,7 +276,7 @@ void PhysicsSystem::AddRigidbody(
 }
 
 void PhysicsSystem::DeleteColliderShape(
-    const UUID& entity,
+    const Entity& entity,
     ColliderComponent& collider,
     size_t shapeIndex
 )
@@ -305,7 +305,7 @@ void PhysicsSystem::DeleteColliderShape(
 }
 
 void PhysicsSystem::DeleteCollider(
-    const UUID& entity,
+    const Entity& entity,
     ColliderComponent& collider
 )
 {
@@ -340,7 +340,7 @@ void PhysicsSystem::DeleteCollider(
 }
 
 void PhysicsSystem::DeleteRigidBody(
-    const UUID& entity,
+    const Entity& entity,
     ComponentStorage<ColliderComponent>& colliders
 )
 {

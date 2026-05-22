@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <unordered_map>
-#include "../utils/UUID.h"
+#include "scene/Entity.h"
 
 #include "MaterialRegistry.h"
 #include "MeshRegistry.h"
@@ -45,7 +45,8 @@ namespace Lengine {
     struct TextureLoadRequest
     {
         UUID textureID;
-        UUID targetID;                 // materialID OR entityID
+        UUID matID;
+        Entity entityID;
         TextureMapType mapType;
         TextureTargetType targetType;
 

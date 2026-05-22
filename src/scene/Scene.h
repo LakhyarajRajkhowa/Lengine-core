@@ -19,23 +19,21 @@ namespace Lengine {
         }
   
         Entity* createEntity_root(
-            const std::string& name,
-            UUID entityID = UUID()
+            const std::string& name
         );
 
         Entity* createEntity(
-            const std::string& name,
-            UUID entityID = UUID()
+            const std::string& name
         );
 
-        UUID GetRootParent(const UUID& entityID);
-        UUID DuplicateEntityRecursive(UUID originalID, UUID newParent, UUID newRoot);
-        UUID DuplicateHierarchy(UUID rootID);
+        Entity GetRootParent(const Entity& entityID);
+        Entity DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot);
+        Entity DuplicateHierarchy(Entity rootID);
 
-        Entity* getEntityByID(const UUID& UUID);
-        Entity* addEntity(std::unique_ptr<Entity> entity, const UUID originalEntityId);
+        Entity* getEntityByID(const Entity& UUID);
+        Entity* addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId);
        
-        const  Entity* getEntityByID(const UUID& id) const;
+        const  Entity* getEntityByID(const Entity& id) const;
 
 
         const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
@@ -43,12 +41,12 @@ namespace Lengine {
             return entities;
         }
 
-        const std::vector<UUID>& GetRootEntities() const { return rootEntities; }
-        std::vector<UUID>& GetRootEntities() {
+        const std::vector<Entity>& GetRootEntities() const { return rootEntities; }
+        std::vector<Entity>& GetRootEntities() {
             return rootEntities;
         }
 
-        bool IsRootEntity(const UUID& id)
+        bool IsRootEntity(const Entity& id)
         {
             const auto& roots = GetRootEntities();
             return std::find(roots.begin(), roots.end(), id) != roots.end();
@@ -61,13 +59,13 @@ namespace Lengine {
 
         UUID getUUID() const { return sceneID; }
 
-        bool HasChildren(UUID entityID) const;
-        const std::vector<UUID>& GetChildren(UUID entityID) const;
+        bool HasChildren(Entity entityID) const;
+        const std::vector<Entity>& GetChildren(Entity entityID) const;
 
-        void SetParent(UUID child, UUID parent);
-        void MakeOrphan(UUID child);
-        void RemoveEntity(const UUID);
-        void RemoveEntityRecursive(UUID id);
+        void SetParent(Entity child, Entity parent);
+        void MakeOrphan(Entity child);
+        void RemoveEntity(const Entity);
+        void RemoveEntityRecursive(Entity id);
 
         std::unique_ptr<Scene> Clone();
        
@@ -199,11 +197,11 @@ namespace Lengine {
         }
 
 
-        const UUID& GetDirectionalShadowCaster() const {
+        const Entity& GetDirectionalShadowCaster() const {
             return directionalShadowCaster;
         }
 
-        void Scene::SetDirectionalShadowCaster(UUID entity)
+        void Scene::SetDirectionalShadowCaster(Entity entity)
         {
             // Clear old one
             if (directionalShadowCaster != UUID::Null &&
@@ -222,13 +220,13 @@ namespace Lengine {
             }
         }
 
-        const UUID& GetPointShadowCaster() const {
+        const Entity& GetPointShadowCaster() const {
             return pointShadowCaster;
         }
 
-        void Scene::SetPointShadowCaster(UUID entity)
+        void Scene::SetPointShadowCaster(Entity entity)
         {
-            if (pointShadowCaster != UUID::Null &&
+            if (pointShadowCaster != NullEntity &&
                 lights.Has(pointShadowCaster))
             {
                 lights.Get(pointShadowCaster).castShadow = false;
@@ -236,18 +234,18 @@ namespace Lengine {
 
             pointShadowCaster = entity;
 
-            if (pointShadowCaster != UUID::Null &&
+            if (pointShadowCaster != NullEntity &&
                 lights.Has(pointShadowCaster))
             {
                 lights.Get(pointShadowCaster).castShadow = true;
             }
         }
 
-        const UUID& GetPrimaryCamera() const {
+        const Entity& GetPrimaryCamera() const {
             return primaryCamera;
         }
 
-        void SetPrimaryCamera(const UUID& id) {
+        void SetPrimaryCamera(const Entity& id) {
             primaryCamera = id;
         }
         
@@ -257,11 +255,13 @@ namespace Lengine {
         std::string name;
         UUID sceneID;
         std::vector<std::unique_ptr<Entity>> entities;
-        std::vector<UUID> rootEntities;
+        std::vector<Entity> rootEntities;
 
-        UUID primaryCamera = UUID::Null;
-        UUID directionalShadowCaster = UUID::Null;
-        UUID pointShadowCaster = UUID::Null;
+        Entity nextEntityID = 1;
+
+        Entity primaryCamera = NullEntity;
+        Entity directionalShadowCaster = NullEntity;
+        Entity pointShadowCaster = NullEntity;
 
         ComponentStorage<Light> lights;
         ComponentStorage<HierarchyComponent> hierarchys;
