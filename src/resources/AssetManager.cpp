@@ -30,11 +30,8 @@ void AssetManager::LoadAllDefaultAssets() {
 
 void AssetManager::Update(Scene& activeScene) {
     UpdateAllAssetViews();
-  //  UpdateAssetStates();
     SyncAssetsToScene(activeScene);
     ProcessGpuUploads();
-
-
 }
 
 void AssetManager::UpdateAllAssetViews()
@@ -83,10 +80,6 @@ void AssetManager::UpdateAllAssetViews()
     AssetDatabase::needsUpdate = false;
 }
 
-    
-
-
-
 //  ---- SUBMESH ---
 
 void AssetManager::RequestSubmeshLoad(const UUID& meshID, const Entity& entityID)
@@ -127,7 +120,7 @@ bool AssetManager::LoadSubmesh(const UUID& id) {
 }
 
 bool AssetManager::processPendingSubmesh(const UUID& id) {
-    
+
     auto& submesh = submeshes[id];
     if (submesh) {
         submesh->setupMesh();
@@ -135,8 +128,6 @@ bool AssetManager::processPendingSubmesh(const UUID& id) {
     }
 
     return false;
-
-        
 }
 
 Mesh* AssetManager::GetSubmesh(const UUID& id) {
@@ -369,12 +360,10 @@ bool AssetManager::LoadMaterial(const UUID& matID) {
         return true;
 
     }
-        
+
     else
         return false;
 }
-
-
 
 
 const AssetMetadata* AssetManager::GetAssetMetaData(const UUID& uuid) const
@@ -389,7 +378,6 @@ const AssetMetadata* AssetManager::GetAssetMetaData(const UUID& uuid) const
 }
 
 
-
 //    ----- MESH ----
 void AssetManager::ImportPrefab(const std::string& path) {
     UUID assetID = UUID();
@@ -398,7 +386,7 @@ void AssetManager::ImportPrefab(const std::string& path) {
         assetStates[assetID] = AssetState::Importing;
         currentImportingAsset.second = path;
     }
-  
+
     std::thread([this, path, assetID]() {
 
         bool ok = AssetImporter::ImportPrefabFile(path, assetID);
@@ -408,12 +396,10 @@ void AssetManager::ImportPrefab(const std::string& path) {
             : AssetState::Failed;
 
         }).detach();
-
-
 }
 
 bool AssetManager::LoadPrefabToScene(const std::string& path) {
-    
+
     PrefabData data = LoadPrefabFile(path);
 
     pendingPrefabs.push(data);
@@ -427,6 +413,8 @@ Entity* AssetManager::InstantiatePrefab(
     const PrefabData& prefab
 )
 {
+    Registry& registry = scene.GetRegistry();
+
     std::vector<Entity*> entities(prefab.nodes.size(), nullptr);
 
     // ---- Create entities ----
@@ -435,7 +423,7 @@ Entity* AssetManager::InstantiatePrefab(
         Entity* e = scene.createEntity_root(node.name);
         entities[node.index] = e;
 
-        auto& t = scene.Transforms().Add(*e);
+        auto& t = registry.transforms.Add(*e);
 
         TransformSystem::DecomposeMatrix(
             node.localTransform,
@@ -451,12 +439,10 @@ Entity* AssetManager::InstantiatePrefab(
 
         if (node.meshID != UUID::Null)
         {
-
             // Submesh
-            if (!scene.MeshFilters().Has(*e)) {
-                auto& mf = scene.MeshFilters().Add(*e);
+            if (!registry.meshFilters.Has(*e)) {
+                auto& mf = registry.meshFilters.Add(*e);
                 RequestSubmeshLoad(node.meshID, *e);
-
             }
             else {
                 RequestSubmeshLoad(node.meshID, *e);
@@ -465,42 +451,34 @@ Entity* AssetManager::InstantiatePrefab(
             // Material
             if (node.materialID != UUID::Null)
             {
-                
-                if (!scene.MeshRenderers().Has(*e)) {
-                    auto& mr = scene.MeshRenderers().Add(*e);
-                    
-                    
+                if (!registry.meshRenderers.Has(*e)) {
+                    auto& mr = registry.meshRenderers.Add(*e);
+
                     if (LoadMaterial(node.materialID)) {
                         mr.inst.baseMaterial = node.materialID;
                         mr.inst.dirty = true;
                     }
                 }
                 else {
-                    auto& mr = scene.MeshRenderers().Get(*e);
+                    auto& mr = registry.meshRenderers.Get(*e);
 
                     if (LoadMaterial(node.materialID)) {
                         mr.inst.baseMaterial = node.materialID;
                         mr.inst.dirty = true;
-
                     }
                 }
-
-
             }
             else {
-                if (!scene.MeshRenderers().Has(*e)) {
-                    auto& mr = scene.MeshRenderers().Add(*e);
+                if (!registry.meshRenderers.Has(*e)) {
+                    auto& mr = registry.meshRenderers.Add(*e);
                     mr.inst.baseMaterial = MaterialID::DefaultPbr;
-
                 }
                 else {
-                    auto& mr = scene.MeshRenderers().Get(*e);
+                    auto& mr = registry.meshRenderers.Get(*e);
                     mr.inst.baseMaterial = MaterialID::DefaultPbr;
-
                 }
             }
-
-        }  
+        }
     }
 
     for (const auto& node : prefab.nodes)
@@ -515,8 +493,8 @@ Entity* AssetManager::InstantiatePrefab(
     }
 
     for (auto& e : entities) {
-        if (scene.MeshFilters().Has(*e)) {
-            auto& m = scene.MeshFilters().Get(*e);
+        if (registry.meshFilters.Has(*e)) {
+            auto& m = registry.meshFilters.Get(*e);
             m.rootParent = *entities[0];
         }
     }
@@ -524,31 +502,28 @@ Entity* AssetManager::InstantiatePrefab(
     // -------- SKELETON (root) --------
     if (prefab.skeletonID != UUID::Null)
     {
-        if (!scene.Skeletons().Has(*entities[0]))
+        if (!registry.skeletons.Has(*entities[0]))
         {
-            auto& sk = scene.Skeletons().Add(*entities[0]);
+            auto& sk = registry.skeletons.Add(*entities[0]);
 
             sk.skeletonID = prefab.skeletonID;
 
-            // load skeleton asset
             if (!GetSkeleton(sk.skeletonID)) {
                 if (!LoadSkeleton(sk.skeletonID)) {
-                    sk.skeletonID == UUID::Null;
+                    sk.skeletonID = UUID::Null;
                 }
             }
         }
-
     }
 
     // -------- ANIMATION (root) --------
     if (!prefab.animationIDs.empty())
     {
-        if (!scene.Animations().Has(*entities[0]))
+        if (!registry.animations.Has(*entities[0]))
         {
-            auto& anim = scene.Animations().Add(*entities[0]);
+            auto& anim = registry.animations.Add(*entities[0]);
 
             anim.animationIDs = prefab.animationIDs;
-
 
             for (auto& animID : anim.animationIDs) {
                 if (!GetAnimation(animID)) {
@@ -568,12 +543,8 @@ Entity* AssetManager::InstantiatePrefab(
         }
     }
 
-
     return entities[0];
 }
-
-
-
 
 
 void AssetManager::ImportMesh(const std::string& path) {
@@ -584,9 +555,7 @@ void AssetManager::ImportMesh(const std::string& path) {
         std::lock_guard<std::mutex> lock(assetMutex);
         assetStates[assetID] = AssetState::Importing;
         currentImportingAsset.second = path;
-
     }
- 
 
     std::thread([this, path, assetID]() {
 
@@ -596,12 +565,8 @@ void AssetManager::ImportMesh(const std::string& path) {
         assetStates[assetID] = ok ? AssetState::Imported
             : AssetState::Failed;
 
-    }).detach();
+        }).detach();
 }
-
-
-
-
 
 
 Material* AssetManager::GetMaterial(const UUID& id)
@@ -614,7 +579,6 @@ Material* AssetManager::GetMaterial(const UUID& id)
 }
 
 
-
 //          ----- TEXTURES -----
 
 void AssetManager::ImportTexture(const std::string& path, const UUID& assetID) {
@@ -623,9 +587,7 @@ void AssetManager::ImportTexture(const std::string& path, const UUID& assetID) {
         std::lock_guard<std::mutex> lock(assetMutex);
         assetStates[assetID] = AssetState::Importing;
         currentImportingAsset.second = path;
-
     }
-
 
     std::thread([this, path, assetID]() {
 
@@ -669,7 +631,7 @@ void AssetManager::RequestTextureLoad(
             });
         assetStates[texID] = AssetState::LoadedToGPU;
         return;
-    } 
+    }
 
     auto tex = std::make_shared<GLTexture>();
     tex->srgb = srgb;
@@ -767,7 +729,6 @@ std::shared_ptr<ImageData> AssetManager::LoadTexture(const UUID& id) {
         return nullptr;
     }
 
-
     return img;
 }
 
@@ -792,7 +753,6 @@ GLTexture* AssetManager::loadImage(const std::string& name, const std::string& p
     *tex = textureCache.getTexture(path, false); // sRGB = false
     textures[id] = tex;
     return tex.get();
-
 }
 
 bool AssetManager::processPendingTextures(const UUID& uuid)
@@ -800,7 +760,6 @@ bool AssetManager::processPendingTextures(const UUID& uuid)
     GLTexture* tex = getTexture(uuid);
     if (!tex || !tex->pendingGPUUpload || !tex->imageCPU)
         return false;
-
 
     GLenum format;
     switch (tex->imageCPU->channels)
@@ -862,7 +821,8 @@ bool AssetManager::processPendingTextures(const UUID& uuid)
 
 
 GLTexture* AssetManager::getTexture(const UUID& id) {
-    return textures[id].get();
+    auto it = textures.find(id);
+    return it != textures.end() ? it->second.get() : nullptr;
 }
 
 
@@ -889,8 +849,6 @@ GLSLProgram* AssetManager::getShader(const std::string& name) {
 
 //          ----- ASSET REGISTRY -----
 
-
-
 // ASSET DATABASE
 
 void AssetManager::LoadAssetDatabase() {
@@ -908,29 +866,23 @@ std::unique_ptr<Scene> AssetManager::createScene(const std::string& name, const 
 {
     namespace fs = std::filesystem;
 
-    // Create a new scene with UUID
     UUID sID;
     std::unique_ptr<Scene> scene = std::make_unique<Scene>(name, sID);
 
     fs::path dir(folderPath);
 
-    // Ensure folder exists
     if (!fs::exists(dir))
         fs::create_directories(dir);
 
-    // File name generation
     std::string fileName = name + ".json";
     fs::path finalPath = dir / fileName;
 
-    // --- JSON BUILDING ---
     json jScene;
 
-    // Order: UUID → Name → Entities
     jScene["uuid"] = scene->getUUID().toUint64();
     jScene["name"] = name;
-    jScene["entities"] = json::array();   // empty at creation
+    jScene["entities"] = json::array();
 
-    // --- WRITE FILE ---
     std::ofstream file(finalPath);
     file << jScene.dump(4);
 
@@ -954,24 +906,22 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
     json jScene;
     jScene["uuid"] = scene.getUUID().toUint64();
     jScene["name"] = sceneName;
-
     jScene["entities"] = json::array();
 
+    const Registry& registry = scene.GetRegistry();
     const auto& entities = scene.getEntities();
 
     for (const auto& entityPtr : entities)
     {
         const Entity entityID = *entityPtr;
-        const std::string entityName = scene.NameTags().Get(entityID).name;
-
+        const std::string entityName = registry.nameTags.Get(entityID).name;
 
         json jEntity;
-
         jEntity["entityID"] = entityID;
         jEntity["name"] = entityName;
 
-        if (scene.Transforms().Has(entityID)) {
-            const TransformComponent& entityTransform = scene.Transforms().Get(entityID);
+        if (registry.transforms.Has(entityID)) {
+            const TransformComponent& entityTransform = registry.transforms.Get(entityID);
 
             jEntity["transform"] = {
                 { "position", { entityTransform.localPosition.x, entityTransform.localPosition.y, entityTransform.localPosition.z } },
@@ -979,85 +929,59 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
                 { "scale",    { entityTransform.localScale.x,    entityTransform.localScale.y,    entityTransform.localScale.z } }
             };
         }
-       
 
-        if (scene.MeshFilters().Has(entityID)) {
-            const MeshFilter& mf = scene.MeshFilters().Get(entityID);
+        if (registry.meshFilters.Has(entityID)) {
+            const MeshFilter& mf = registry.meshFilters.Get(entityID);
 
             json jMeshFilter;
-
             jMeshFilter["meshID"] = mf.meshID.toUint64();
-
             jEntity["meshFilter"] = jMeshFilter;
-
         }
 
-        if (scene.MeshRenderers().Has(entityID)) {
-            const MeshRenderer& mr = scene.MeshRenderers().Get(entityID);
+        if (registry.meshRenderers.Has(entityID)) {
+            const MeshRenderer& mr = registry.meshRenderers.Get(entityID);
 
             json jMeshRenderer;
-
             jMeshRenderer["materialID"] = mr.inst.baseMaterial.toUint64();
-
             jEntity["meshRenderer"] = jMeshRenderer;
         }
 
-        if (scene.Lights().Has(entityID)) {
-            const Light& l = scene.Lights().Get(entityID);
+        if (registry.lights.Has(entityID)) {
+            const Light& l = registry.lights.Get(entityID);
 
             json jLight;
-
-            // Type (store as int or string)
             jLight["type"] = static_cast<int>(l.type);
-
-            // Basic properties
             jLight["color"] = { l.color.x, l.color.y, l.color.z };
             jLight["intensity"] = l.intensity;
-
-            // Range (Point + Spot)
             jLight["range"] = l.range;
-
-            // Spot angles
             jLight["innerAngle"] = l.innerAngle;
             jLight["outerAngle"] = l.outerAngle;
-
-            // Shadow
             jLight["castShadow"] = l.castShadow;
-
             jEntity["light"] = jLight;
         }
 
-        if (scene.Cameras().Has(entityID))
+        if (registry.cameras.Has(entityID))
         {
-            const CameraComponent& c = scene.Cameras().Get(entityID);
+            const CameraComponent& c = registry.cameras.Get(entityID);
 
             json jCam;
-
-            // Projection type
             jCam["projectionType"] = static_cast<int>(c.projectionType);
-
-            // Perspective params
             jCam["fov"] = c.fov;
             jCam["nearClip"] = c.nearClip;
             jCam["farClip"] = c.farClip;
             jCam["aspectRatio"] = c.aspectRatio;
-
-            // Ortho params
             jCam["orthoSize"] = c.orthoSize;
-
             jEntity["camera"] = jCam;
         }
 
-        if (scene.Skeletons().Has(entityID))
+        if (registry.skeletons.Has(entityID))
         {
-            const SkeletonComponent& s = scene.Skeletons().Get(entityID);
+            const SkeletonComponent& s = registry.skeletons.Get(entityID);
 
             json jSkeleton;
 
-            // Skeleton ID
             jSkeleton["skeletonID"] = s.skeletonID.toUint64();
 
-            // Helper lambda to save mat4 vector
             auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
                 json arr = json::array();
 
@@ -1075,34 +999,25 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jSkeleton["localPose"] = SaveMat4Array(s.localPose);
             jSkeleton["globalPose"] = SaveMat4Array(s.globalPose);
             jSkeleton["finalMatrices"] = SaveMat4Array(s.finalMatrices);
-
             jEntity["skeleton"] = jSkeleton;
         }
 
-        if (scene.Animations().Has(entityID))
+        if (registry.animations.Has(entityID))
         {
-            const AnimationComponent& a = scene.Animations().Get(entityID);
+            const AnimationComponent& a = registry.animations.Get(entityID);
 
             json jAnim;
 
-            // Animation IDs
             json animIDs = json::array();
             for (const auto& id : a.animationIDs)
-            {
-                animIDs.push_back(id.toUint64()); // or your UUID → string method
-            }
+                animIDs.push_back(id.toUint64());
 
             jAnim["animationIDs"] = animIDs;
-
-            // Current animation
             jAnim["currentAnimationID"] = a.currentAnimationID.toUint64();
-
-            // Playback state
             jAnim["currentTime"] = a.currentTime;
             jAnim["playbackSpeed"] = a.playbackSpeed;
             jAnim["looping"] = a.looping;
 
-            // Helper to save mat4 array
             auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
                 json arr = json::array();
 
@@ -1118,16 +1033,14 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
                 };
 
             jAnim["finalBoneMatrices"] = SaveMat4Array(a.finalBoneMatrices);
-
             jEntity["animation"] = jAnim;
         }
 
-        if (scene.Hierarchys().Has(entityID))
+        if (registry.hierarchies.Has(entityID))
         {
-            const auto& h = scene.Hierarchys().Get(entityID);
+            const auto& h = registry.hierarchies.Get(entityID);
 
             json jH;
-
             jH["parent"] = h.parent;
 
             json children = json::array();
@@ -1135,13 +1048,12 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
                 children.push_back(c);
 
             jH["children"] = children;
-
             jEntity["hierarchy"] = jH;
         }
 
-        if (scene.Colliders().Has(entityID))
+        if (registry.colliders.Has(entityID))
         {
-            const ColliderComponent& c = scene.Colliders().Get(entityID);
+            const ColliderComponent& c = registry.colliders.Get(entityID);
 
             json jCol;
             json jShapes = json::array();
@@ -1149,14 +1061,9 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             for (const auto& s : c.shapes)
             {
                 json jShape;
-
-                // Type
                 jShape["type"] = static_cast<int>(s.type);
-
-                // Common
                 jShape["isTrigger"] = s.isTrigger;
 
-                // Shape-specific data
                 switch (s.type)
                 {
                 case ColliderShape::Type::Box:
@@ -1177,10 +1084,8 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             }
 
             jCol["shapes"] = jShapes;
-
             jEntity["collider"] = jCol;
         }
-
 
         jScene["entities"].push_back(jEntity);
     }
@@ -1218,8 +1123,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
         file >> jScene;
         file.close();
 
-      
-        // --- EXTRACT SCENE DATA ---
         std::string sceneName;
         uint64_t sceneUUID = 0;
 
@@ -1234,7 +1137,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
         std::unique_ptr<Scene> scene = std::make_unique<Scene>(sceneName, UUID(sceneUUID));
 
-        // ---- Entities ----
         const auto& jEntities = jScene.at("entities");
 
         for (const auto& jEntity : jEntities)
@@ -1244,9 +1146,9 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                 Entity* entity = scene->createEntity(entityName);
 
                 const Entity entityID = *entity;
+                Registry& registry = scene->GetRegistry();
 
-                scene->NameTags().Add(entityID, NameTagComponent(entityName));
-
+                registry.nameTags.Add(entityID, NameTagComponent(entityName));
 
                 // ---- Transform ----
                 if (jEntity.contains("transform"))
@@ -1262,10 +1164,10 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     };
 
                     tr.localRotation = glm::quat(
-                        jt.at("rotation")[3],  // w
-                        jt.at("rotation")[0],  // x
-                        jt.at("rotation")[1],  // y
-                        jt.at("rotation")[2]   // z
+                        jt.at("rotation")[3],
+                        jt.at("rotation")[0],
+                        jt.at("rotation")[1],
+                        jt.at("rotation")[2]
                     );
 
                     tr.localScale = {
@@ -1274,17 +1176,15 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         jt.at("scale")[2]
                     };
 
-
-                    scene->Transforms().Add(entityID, tr);
+                    registry.transforms.Add(entityID, tr);
                 }
-
 
                 // ---- MeshFilter ----
                 if (jEntity.contains("meshFilter"))
                 {
                     MeshFilter mf;
                     mf.meshID = UUID(jEntity["meshFilter"].at("meshID").get<uint64_t>());
-                    scene->MeshFilters().Add(entityID, mf);
+                    registry.meshFilters.Add(entityID, mf);
                 }
 
                 // ---- MeshRenderer ----
@@ -1292,7 +1192,7 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                 {
                     MeshRenderer mr;
                     mr.inst.baseMaterial = UUID(jEntity["meshRenderer"].at("materialID").get<uint64_t>());
-                    scene->MeshRenderers().Add(entityID, mr);
+                    registry.meshRenderers.Add(entityID, mr);
                 }
 
                 // ---- Light ----
@@ -1302,11 +1202,9 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     Light light(entityID);
 
-                    // Type
                     if (jl.contains("type"))
                         light.type = static_cast<LightType>(jl.at("type").get<int>());
 
-                    // Color
                     if (jl.contains("color")) {
                         light.color = {
                             jl.at("color")[0],
@@ -1315,29 +1213,13 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         };
                     }
 
-                    // Intensity
-                    if (jl.contains("intensity"))
-                        light.intensity = jl.at("intensity");
+                    if (jl.contains("intensity"))  light.intensity = jl.at("intensity");
+                    if (jl.contains("range"))       light.range = jl.at("range");
+                    if (jl.contains("innerAngle"))  light.innerAngle = jl.at("innerAngle");
+                    if (jl.contains("outerAngle"))  light.outerAngle = jl.at("outerAngle");
+                    if (jl.contains("castShadow"))  light.castShadow = jl.at("castShadow");
 
-                    // Range
-                    if (jl.contains("range"))
-                        light.range = jl.at("range");
-
-                    // Spot angles
-                    if (jl.contains("innerAngle"))
-                        light.innerAngle = jl.at("innerAngle");
-
-                    if (jl.contains("outerAngle"))
-                        light.outerAngle = jl.at("outerAngle");
-
-                    // Shadow
-                    if (jl.contains("castShadow"))
-                        light.castShadow = jl.at("castShadow");
-
-                    // Add the fully constructed light
-                    scene->Lights().Add(entityID, light);
-
-                    
+                    registry.lights.Add(entityID, light);
                 }
 
                 // ---- Camera ----
@@ -1347,32 +1229,20 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     CameraComponent c;
 
-                    // Projection type
                     if (jc.contains("projectionType"))
                         c.projectionType = static_cast<CameraComponent::ProjectionType>(
                             jc.at("projectionType").get<int>()
                             );
 
-                    // Perspective params
-                    if (jc.contains("fov"))
-                        c.fov = jc.at("fov");
-
-                    if (jc.contains("nearClip"))
-                        c.nearClip = jc.at("nearClip");
-
-                    if (jc.contains("farClip"))
-                        c.farClip = jc.at("farClip");
-
-                    if (jc.contains("aspectRatio"))
-                        c.aspectRatio = jc.at("aspectRatio");
-
-                    // Ortho params
-                    if (jc.contains("orthoSize"))
-                        c.orthoSize = jc.at("orthoSize");
+                    if (jc.contains("fov"))         c.fov = jc.at("fov");
+                    if (jc.contains("nearClip"))     c.nearClip = jc.at("nearClip");
+                    if (jc.contains("farClip"))      c.farClip = jc.at("farClip");
+                    if (jc.contains("aspectRatio"))  c.aspectRatio = jc.at("aspectRatio");
+                    if (jc.contains("orthoSize"))    c.orthoSize = jc.at("orthoSize");
 
                     c.recalculateProjection();
 
-                    scene->Cameras().Add(entityID, c);
+                    registry.cameras.Add(entityID, c);
                 }
 
                 // ---- Skeleton ----
@@ -1382,11 +1252,9 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     SkeletonComponent s;
 
-                    // Skeleton ID
                     if (js.contains("skeletonID"))
                         s.skeletonID = UUID(js.at("skeletonID").get<uint64_t>());
 
-                    // Helper lambda to load mat4 vector
                     auto LoadMat4Array = [](const json& arr) {
                         std::vector<glm::mat4> mats;
 
@@ -1404,19 +1272,13 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         return mats;
                         };
 
-                    if (js.contains("localPose"))
-                        s.localPose = LoadMat4Array(js.at("localPose"));
+                    if (js.contains("localPose"))     s.localPose = LoadMat4Array(js.at("localPose"));
+                    if (js.contains("globalPose"))    s.globalPose = LoadMat4Array(js.at("globalPose"));
+                    if (js.contains("finalMatrices")) s.finalMatrices = LoadMat4Array(js.at("finalMatrices"));
 
-                    if (js.contains("globalPose"))
-                        s.globalPose = LoadMat4Array(js.at("globalPose"));
-
-                    if (js.contains("finalMatrices"))
-                        s.finalMatrices = LoadMat4Array(js.at("finalMatrices"));
-
-                    // Mark dirty so system recalculates if needed
                     s.dirty = true;
 
-                    scene->Skeletons().Add(entityID, s);
+                    registry.skeletons.Add(entityID, s);
                 }
 
                 // ---- Animation ----
@@ -1426,30 +1288,19 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     AnimationComponent a;
 
-                    // Animation IDs
                     if (ja.contains("animationIDs"))
                     {
                         for (const auto& idStr : ja.at("animationIDs"))
-                        {
-                            a.animationIDs.push_back(UUID(idStr));
-                        }
+                            a.animationIDs.push_back(UUID(idStr.get<uint64_t>()));
                     }
 
-                    // Current animation
                     if (ja.contains("currentAnimationID"))
                         a.currentAnimationID = UUID(ja.at("currentAnimationID").get<uint64_t>());
 
-                    // Playback state
-                    if (ja.contains("currentTime"))
-                        a.currentTime = ja.at("currentTime");
+                    if (ja.contains("currentTime"))    a.currentTime = ja.at("currentTime");
+                    if (ja.contains("playbackSpeed"))  a.playbackSpeed = ja.at("playbackSpeed");
+                    if (ja.contains("looping"))        a.looping = ja.at("looping");
 
-                    if (ja.contains("playbackSpeed"))
-                        a.playbackSpeed = ja.at("playbackSpeed");
-
-                    if (ja.contains("looping"))
-                        a.looping = ja.at("looping");
-
-                    // Helper to load mat4 array
                     auto LoadMat4Array = [](const json& arr) {
                         std::vector<glm::mat4> mats;
 
@@ -1470,7 +1321,7 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     if (ja.contains("finalBoneMatrices"))
                         a.finalBoneMatrices = LoadMat4Array(ja.at("finalBoneMatrices"));
 
-                    scene->Animations().Add(entityID, a);
+                    registry.animations.Add(entityID, a);
                 }
 
                 // ---- Collider ----
@@ -1486,19 +1337,12 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         {
                             ColliderShape s;
 
-                            // Type
                             if (jShape.contains("type"))
-                            {
-                                s.type = static_cast<ColliderShape::Type>(
-                                    jShape.at("type").get<int>()
-                                    );
-                            }
+                                s.type = static_cast<ColliderShape::Type>(jShape.at("type").get<int>());
 
-                            // Common
                             if (jShape.contains("isTrigger"))
                                 s.isTrigger = jShape.at("isTrigger");
 
-                            // Shape-specific
                             switch (s.type)
                             {
                             case ColliderShape::Type::Box:
@@ -1526,18 +1370,14 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                                 break;
                             }
 
-                            // Runtime defaults
                             s.runtimeShape = nullptr;
                             s.dirty = true;
 
                             c.shapes.push_back(s);
                         }
                     }
-                    scene->Colliders().Add(entityID, c);
-   
+                    registry.colliders.Add(entityID, c);
                 }
-
-
             }
             catch (const json::exception& e) {
                 std::cerr << "Skipping invalid entity in scene \"" << sceneName
@@ -1547,13 +1387,12 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
             catch (const std::exception& e) {
                 std::cerr << "Error creating entity: " << e.what() << std::endl;
                 continue;
-            } 
+            }
         }
 
         for (const auto& jEntity : jScene["entities"])
         {
             Entity id = Entity(jEntity["entityID"]);
-
             Entity parent = NullEntity;
 
             if (jEntity.contains("hierarchy"))
@@ -1570,7 +1409,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
             }
             else
             {
-                // ROOT ENTITY (including singletons)
                 if (std::find(scene->GetRootEntities().begin(),
                     scene->GetRootEntities().end(),
                     id) == scene->GetRootEntities().end())
@@ -1610,7 +1448,6 @@ void AssetManager::ProcessGpuUploads()
         }
     }
 
-    // GPU work OUTSIDE the lock
     for (UUID id : gpuReadyAssets)
     {
         AssetType type = getAssetType(id);
@@ -1635,16 +1472,12 @@ void AssetManager::ProcessGpuUploads()
 }
 
 
-
-
 void AssetManager::SyncAssetsToScene(Scene& activeScene) {
 
     if (!pendingPrefabs.empty()) {
         InstantiatePrefab(activeScene, pendingPrefabs.front());
-
         pendingPrefabs.pop();
     }
-
 
     if (!pendingSubmeshes.empty())
     {
@@ -1652,7 +1485,7 @@ void AssetManager::SyncAssetsToScene(Scene& activeScene) {
 
         if (assetStates[req.meshID] == AssetState::LoadedToGPU)
         {
-            auto& mf = activeScene.MeshFilters().Get(req.entityID);
+            auto& mf = activeScene.GetRegistry().meshFilters.Get(req.entityID);
             mf.meshID = req.meshID;
             mf.ClearPendingSubmesh();
 
@@ -1666,7 +1499,6 @@ void AssetManager::SyncAssetsToScene(Scene& activeScene) {
     }
 
     ProcessPendingTextureRequests(activeScene);
-
 }
 
 // this func is for clearing up the Failed or Loaded assets of assetStates 
@@ -1674,7 +1506,6 @@ void AssetManager::SyncAssetsToScene(Scene& activeScene) {
 // it is better to keep only the assets which are needed for loading or importing
 void AssetManager::UpdateAssetStates()
 {
-    // could use std::erase_if from C++20
     for (auto it = assetStates.begin(); it != assetStates.end(); )
     {
         AssetState state = it->second;
@@ -1684,7 +1515,7 @@ void AssetManager::UpdateAssetStates()
             state == AssetState::Unloaded
             )
         {
-            it = assetStates.erase(it); 
+            it = assetStates.erase(it);
         }
         else
         {
@@ -1694,11 +1525,12 @@ void AssetManager::UpdateAssetStates()
 }
 
 
-
 void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
 {
     if (pendingTextureRequests.empty())
         return;
+
+    Registry& registry = activeScene.GetRegistry();
 
     size_t count = pendingTextureRequests.size();
 
@@ -1709,8 +1541,7 @@ void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
 
         AssetState state = assetStates[req.textureID];
 
-        if (state == AssetState::Importing 
-            )
+        if (state == AssetState::Importing)
         {
             pendingTextureRequests.push(req);
             continue;
@@ -1744,44 +1575,36 @@ void AssetManager::ProcessPendingTextureRequests(Scene& activeScene)
 
             switch (req.mapType)
             {
-            case TextureMapType::Albedo: mat->map_albedo = req.textureID; break;
-            case TextureMapType::Normal: mat->map_normal = req.textureID; break;
-            case TextureMapType::Metallic: mat->map_metallic = req.textureID; break;
-            case TextureMapType::Roughness: mat->map_roughness = req.textureID; break;
-            case TextureMapType::AmbientOcclusion: mat->map_ao = req.textureID; break;
-            case TextureMapType::MetallicRoughness:
-                mat->map_metallicRoughness = req.textureID;
-                break;
+            case TextureMapType::Albedo:             mat->map_albedo = req.textureID; break;
+            case TextureMapType::Normal:             mat->map_normal = req.textureID; break;
+            case TextureMapType::Metallic:           mat->map_metallic = req.textureID; break;
+            case TextureMapType::Roughness:          mat->map_roughness = req.textureID; break;
+            case TextureMapType::AmbientOcclusion:   mat->map_ao = req.textureID; break;
+            case TextureMapType::MetallicRoughness:  mat->map_metallicRoughness = req.textureID; break;
             }
 
             mat->localDirty = true;
-
             assetStates[req.textureID] = AssetState::Loaded;
         }
         else
         {
-            if (!activeScene.MeshRenderers().Has(req.entityID))
+            if (!registry.meshRenderers.Has(req.entityID))
                 continue;
 
-            MeshRenderer& mr =
-                activeScene.MeshRenderers().Get(req.entityID);
-
+            MeshRenderer& mr = registry.meshRenderers.Get(req.entityID);
             MaterialInstance& inst = mr.inst;
 
             switch (req.mapType)
             {
-            case TextureMapType::Albedo: inst.map_albedo = req.textureID; break;
-            case TextureMapType::Normal: inst.map_normal = req.textureID; break;
-            case TextureMapType::Metallic: inst.map_metallic = req.textureID; break;
-            case TextureMapType::Roughness: inst.map_roughness = req.textureID; break;
-            case TextureMapType::AmbientOcclusion: inst.map_ao = req.textureID; break;
-            case TextureMapType::MetallicRoughness:
-                inst.map_metallicRoughness = req.textureID;
-                break;
+            case TextureMapType::Albedo:             inst.map_albedo = req.textureID; break;
+            case TextureMapType::Normal:             inst.map_normal = req.textureID; break;
+            case TextureMapType::Metallic:           inst.map_metallic = req.textureID; break;
+            case TextureMapType::Roughness:          inst.map_roughness = req.textureID; break;
+            case TextureMapType::AmbientOcclusion:   inst.map_ao = req.textureID; break;
+            case TextureMapType::MetallicRoughness:  inst.map_metallicRoughness = req.textureID; break;
             }
 
             inst.dirty = true;
-
             assetStates[req.textureID] = AssetState::Loaded;
         }
     }
@@ -1793,12 +1616,12 @@ bool AssetManager::haveAssetState(const UUID& assetID)
 }
 
 
-bool AssetManager::hasLoadingAssets() 
+bool AssetManager::hasLoadingAssets()
 {
     for (const auto& [id, state] : assetStates)
     {
-        if (state == AssetState::Loading || state == AssetState::LoadedToCPU )
-        { 
+        if (state == AssetState::Loading || state == AssetState::LoadedToCPU)
+        {
             currentLoadingAsset = id;
             return true;
         }
@@ -1829,22 +1652,14 @@ float AssetManager::getLoadingProgress(const UUID& id) const
 
     AssetState state = it->second;
     switch (state) {
-    case AssetState::Failed:
-        return -1.0f;
-    case AssetState::Loading:
-        return 0.25f;
-    case AssetState::LoadedToCPU:
-        return 0.50f;
-    case AssetState::LoadedToGPU:
-        return 0.75f;
-    case AssetState::Loaded:
-        return 1.0f;
-    case AssetState::Unloaded:
-        return -1.0f;
-    default:
-        return 0.0f;
+    case AssetState::Failed:      return -1.0f;
+    case AssetState::Loading:     return 0.25f;
+    case AssetState::LoadedToCPU: return 0.50f;
+    case AssetState::LoadedToGPU: return 0.75f;
+    case AssetState::Loaded:      return 1.0f;
+    case AssetState::Unloaded:    return -1.0f;
+    default:                      return 0.0f;
     }
-
 }
 
 float AssetManager::getImportingProgress(const UUID& id) const
@@ -1855,21 +1670,15 @@ float AssetManager::getImportingProgress(const UUID& id) const
 
     AssetState state = it->second;
     switch (state) {
-    case AssetState::Failed:
-        return -1.0f;
-    case AssetState::Importing:
-        return 0.25f;
-    case AssetState::Imported:
-        return 1.0f;
-    default:
-        return 0.0f;
+    case AssetState::Failed:    return -1.0f;
+    case AssetState::Importing: return 0.25f;
+    case AssetState::Imported:  return 1.0f;
+    default:                    return 0.0f;
     }
-
 }
 
 void AssetManager::drawLoadingScreens() {
 
-    // Progress bar
     if (hasLoadingAssets()) {
         UUID id = getCurrentLoadingAsset();
         AssetType type = getAssetType(id);
@@ -1877,7 +1686,6 @@ void AssetManager::drawLoadingScreens() {
         float progess = getLoadingProgress(id);
 
         LoadingSystem::LoadingUIConfig config;
-
 
         switch (type) {
         case AssetType::Mesh:
@@ -1888,7 +1696,6 @@ void AssetManager::drawLoadingScreens() {
             assetPath = GetAssetMetaData(id)->libraryPath.string();
             config.title = "Loading Texture";
             break;
-
         }
 
         config.message = "Loading :" + assetPath;
@@ -1898,7 +1705,6 @@ void AssetManager::drawLoadingScreens() {
 
 void AssetManager::drawImportingScreens() {
 
-    // Progress bar
     if (hasImportingAssets()) {
         UUID id = getCurrentImportingAsset().first;
         std::string assetPath = "Unknown";
@@ -1918,12 +1724,8 @@ AssetType AssetManager::getAssetType(const UUID& id) {
     const AssetMetadata* meta = GetAssetMetaData(id);
     if (!meta) return AssetType::Unknown;
 
-    if (meta->type == AssetType::Material) return AssetType::Material;
+    if (meta->type == AssetType::Material)  return AssetType::Material;
     else if (meta->type == AssetType::Texture) return AssetType::Texture;
-    else if (meta->type == AssetType::Mesh) return AssetType::Mesh;
+    else if (meta->type == AssetType::Mesh)    return AssetType::Mesh;
     else return AssetType::Unknown;
 }
-
-
-
-

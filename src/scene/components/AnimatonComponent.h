@@ -1,8 +1,5 @@
 #pragma once
 
-#include "animations/Animation.h"
-
-
 namespace Lengine {
     struct AnimationComponent
     {

@@ -121,84 +121,66 @@ void DeferredRenderer::bindPointShadowUniforms(
     shader.setFloat("farPlane", shadowCubeMap.getFarPlane());
 }
 
-void DeferredRenderer::RenderGeometry(
-    const RenderContext& ctx
-) {
-    const Scene* activeScene = ctx.scene;
+void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
+{
+    const Registry& registry = ctx.scene->GetRegistry();
 
     GLSLProgram* geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
     geomShader->use();
 
-
-
-    const auto& entities = activeScene->getEntities();
-    auto& meshRenderers = activeScene->MeshRenderers();
-    auto& meshFilters = activeScene->MeshFilters();
-    auto& transforms = activeScene->Transforms();
-    auto& animations = activeScene->Animations();
-
-
-    // Bind camera once (view & projection are global)
     geomShader->setMat4("view", ctx.cameraView);
     geomShader->setMat4("projection", ctx.cameraProjection);
     geomShader->setVec3("cameraPos", ctx.cameraPos);
 
+    const auto& mrDense = registry.meshRenderers.GetDense();
+    const auto& mrEntities = registry.meshRenderers.GetEntities();
 
-    for (auto& [entityID, mr] : meshRenderers.All()) {
+    for (size_t i = 0; i < mrDense.size(); ++i)
+    {
+        const MeshRenderer& mr = mrDense[i];
+        const Entity entityID = mrEntities[i];
 
-        if (!transforms.Has(entityID)) continue;
-        if (!meshFilters.Has(entityID)) continue;
+        if (!mr.render) continue;
+        if (mr.inst.baseMaterial.isNull()) continue;
+        if (!registry.HasComponent<TransformComponent>(entityID)) continue;
+        if (!registry.HasComponent<MeshFilter>(entityID)) continue;
 
-
-        const TransformComponent& t = transforms.Get(entityID);
-        const MeshFilter& mf = meshFilters.Get(entityID);
-
+        const TransformComponent& t = registry.GetComponent<TransformComponent>(entityID);
+        const MeshFilter& mf = registry.GetComponent<MeshFilter>(entityID);
 
         if (mf.HasPendingSubmesh()) continue;
-        if (mr.inst.baseMaterial.isNull() || !mr.render) continue;
 
-        glm::mat4 model = t.worldMatrix;
-        geomShader->setMat4("model", model);
+        geomShader->setMat4("model", t.worldMatrix);
 
         Mesh* mesh = nullptr;
-
-        if (!mf.meshID.isNull()) {
+        if (!mf.meshID.isNull())
             mesh = assetManager.GetSubmesh(mf.meshID);
-        }
 
-        // Animation
         geomShader->setBool("useSkeleton", false);
 
+        if (registry.HasComponent<AnimationComponent>(mf.rootParent))
+        {
+            const AnimationComponent& anim = registry.GetComponent<AnimationComponent>(mf.rootParent);
 
-        if (animations.Has(mf.rootParent)) {
-            const AnimationComponent& anim = animations.Get(mf.rootParent);
-
-            if (mesh && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
+            if (mesh
+                && anim.currentAnimationID != UUID::Null
+                && !anim.finalBoneMatrices.empty())
             {
-                for (int i = 0; i < mesh->bonePalette.size(); i++)
+                for (int b = 0; b < (int)mesh->bonePalette.size(); ++b)
                 {
-                    int globalID = mesh->bonePalette[i];
+                    DEBUG_LOG_GAP("Applying final bone matrices", 1000);
 
+                    int globalID = mesh->bonePalette[b];
                     geomShader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(i) + "]",
+                        "finalBonesMatrices[" + std::to_string(b) + "]",
                         anim.finalBoneMatrices[globalID]
                     );
                 }
-
                 geomShader->setBool("useSkeleton", true);
-
             }
-            else {
-                geomShader->setBool("useSkeleton", false);
-
-            }
-
         }
-            
-      
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
-
         if (!mat) continue;
 
         const MaterialInstance& inst = mr.inst;
@@ -210,84 +192,48 @@ void DeferredRenderer::RenderGeometry(
         geomShader->setFloat("material.ao", finalMat.ao);
         geomShader->setFloat("material.normalStrength", finalMat.normalStrength);
 
-
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_albedo,
-            inst.use_map_albedo,
-            "material.hasAlbedoMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_albedo,
+            inst.use_map_albedo, "material.hasAlbedoMap",
             "material.albedoMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Albedo)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Albedo);
 
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_normal,
-            inst.use_map_normal,
-            "material.hasNormalMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_normal,
+            inst.use_map_normal, "material.hasNormalMap",
             "material.normalMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Normal)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Normal);
 
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_ao,
-            inst.use_map_ao,
-            "material.hasAOMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_ao,
+            inst.use_map_ao, "material.hasAOMap",
             "material.aoMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::AO)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::AO);
 
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_metallic,
-            inst.use_map_metallic,
-            "material.hasMetallicMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_metallic,
+            inst.use_map_metallic, "material.hasMetallicMap",
             "material.metallicMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Metallic)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Metallic);
 
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_roughness,
-            inst.use_map_roughness,
-            "material.hasRoughnessMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_roughness,
+            inst.use_map_roughness, "material.hasRoughnessMap",
             "material.roughnessMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Roughness)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Roughness);
 
-        bindTexture(
-            *geomShader,
-            assetManager,
-            finalMat.map_metallicRoughness,
-            inst.use_map_metallicRoughness,
-            "material.hasMetallicRoughnessMap",
+        bindTexture(*geomShader, assetManager, finalMat.map_metallicRoughness,
+            inst.use_map_metallicRoughness, "material.hasMetallicRoughnessMap",
             "material.metallicRoughnessMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::MetallicRoughness)
-        );
-
+            GL_TEXTURE0 + (unsigned)TextureUnit::MetallicRoughness);
 
         if (mesh) mesh->draw();
-
-
     }
 
     geomShader->unuse();
 }
 
-void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffer& gBuffer) {
-    GLSLProgram* shader = assetManager.getShader(ShaderRegistry::DEFERRED_PBR);
-
+void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffer& gBuffer)
+{
     const Scene* activeScene = ctx.scene;
+    const Registry& registry = activeScene->GetRegistry();
 
-    auto& lightComponents = activeScene->Lights();
-    auto& transforms = activeScene->Transforms();
-
+    GLSLProgram* shader = assetManager.getShader(ShaderRegistry::DEFERRED_PBR);
     shader->use();
 
     shader->setInt("gPosition", 0);
@@ -296,112 +242,56 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     shader->setInt("gMaterial", 3);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(
-        GL_TEXTURE_2D,
-        gBuffer.GetColorAttachment(0)
-    );
+    glBindTexture(GL_TEXTURE_2D, gBuffer.GetColorAttachment(0));
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(
-        GL_TEXTURE_2D,
-        gBuffer.GetColorAttachment(1)
-    );
+    glBindTexture(GL_TEXTURE_2D, gBuffer.GetColorAttachment(1));
 
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(
-        GL_TEXTURE_2D,
-        gBuffer.GetColorAttachment(2)
-    );
+    glBindTexture(GL_TEXTURE_2D, gBuffer.GetColorAttachment(2));
 
     glActiveTexture(GL_TEXTURE3);
-    glBindTexture(
-        GL_TEXTURE_2D,
-        gBuffer.GetColorAttachment(3)
-    );
+    glBindTexture(GL_TEXTURE_2D, gBuffer.GetColorAttachment(3));
 
-    // LIGHTING
     uint32_t lightNum = 0;
 
-    for (const auto& [id, light] : lightComponents.All())
+    const auto& lightDense = registry.lights.GetDense();
+    const auto& lightEntities = registry.lights.GetEntities();
+
+    for (size_t i = 0; i < lightDense.size() && lightNum < MAX_LIGHTS; ++i)
     {
-        if (!transforms.Has(id))
+        const Entity id = lightEntities[i];
+        const Light& l = lightDense[i];
+
+        if (!registry.HasComponent<TransformComponent>(id))
             continue;
 
-        if (lightNum >= MAX_LIGHTS)
-            break;
+        shader->setInt("lightTypes[" + std::to_string(lightNum) + "]", static_cast<int>(l.type));
+        shader->setVec3("lightColors[" + std::to_string(lightNum) + "]", l.color);
+        shader->setFloat("lightIntensities[" + std::to_string(lightNum) + "]", l.intensity);
+        shader->setBool("lightCastShadow[" + std::to_string(lightNum) + "]", l.castShadow);
+        shader->setFloat("lightRanges[" + std::to_string(lightNum) + "]", l.range);
+        shader->setFloat("lightInnerAngles[" + std::to_string(lightNum) + "]", glm::cos(glm::radians(l.innerAngle)));
+        shader->setFloat("lightOuterAngles[" + std::to_string(lightNum) + "]", glm::cos(glm::radians(l.outerAngle)));
 
-        const Light& l = light;
+        const TransformComponent& t = registry.GetComponent<TransformComponent>(id);
 
-        // ---------------- Common ----------------
-        shader->setInt(
-            "lightTypes[" + std::to_string(lightNum) + "]",
-            static_cast<int>(l.type)
-        );
-
-        shader->setVec3(
-            "lightColors[" + std::to_string(lightNum) + "]",
-            l.color
-        );
-
-        shader->setFloat(
-            "lightIntensities[" + std::to_string(lightNum) + "]",
-            l.intensity
-        );
-
-        shader->setBool(
-            "lightCastShadow[" + std::to_string(lightNum) + "]",
-            light.castShadow
-        );
-
-        // ---------------- Point & Spot ----------------
-        shader->setFloat(
-            "lightRanges[" + std::to_string(lightNum) + "]",
-            l.range
-        );
-
-        // ---------------- Spot only ----------------
-        shader->setFloat(
-            "lightInnerAngles[" + std::to_string(lightNum) + "]",
-            glm::cos(glm::radians(l.innerAngle))
-        );
-
-        shader->setFloat(
-            "lightOuterAngles[" + std::to_string(lightNum) + "]",
-            glm::cos(glm::radians(l.outerAngle))
-        );
-
-        const TransformComponent& t = transforms.Get(id);
-
-        glm::vec3 position = t.GetWorldPosition();
-        glm::quat rotation = t.GetWorldRotation();
-
-        shader->setVec3(
-            "lightPositions[" + std::to_string(lightNum) + "]",
-            position
-        );
-
-        glm::vec3 direction = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-
-        shader->setVec3(
-            "lightDirections[" + std::to_string(lightNum) + "]",
-            direction
-        );
+        shader->setVec3("lightPositions[" + std::to_string(lightNum) + "]", t.GetWorldPosition());
+        shader->setVec3("lightDirections[" + std::to_string(lightNum) + "]",
+            glm::normalize(t.GetWorldRotation() * glm::vec3(0.0f, 0.0f, -1.0f)));
 
         ++lightNum;
-
-
     }
 
     shader->setInt("lightCount", lightNum);
-
-    // IBL
-
     shader->setInt("irradianceMap", static_cast<unsigned int>(TextureUnit::Irradiance));
     shader->setInt("prefilterMap", static_cast<unsigned int>(TextureUnit::Prefilter));
     shader->setInt("brdfLUT", static_cast<unsigned int>(TextureUnit::BRDF_LUT));
     shader->setFloat("envIntensity", ctx.envIntensity);
     shader->setVec3("envTint", ctx.envTint);
     shader->setMat3("envRotation", ctx.envRotation);
+    shader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
+    shader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Irradiance));
     glBindTexture(GL_TEXTURE_CUBE_MAP, ctx.irradianceMap.id);
@@ -412,37 +302,25 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::BRDF_LUT));
     glBindTexture(GL_TEXTURE_2D, ctx.brdfLUTMap.id);
 
-    shader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
-    shader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
-
     if (activeScene->GetDirectionalShadowCaster() != UUID::Null
-        && transforms.Has(activeScene->GetDirectionalShadowCaster())
-        )
+        && registry.HasComponent<TransformComponent>(activeScene->GetDirectionalShadowCaster()))
     {
         bindShadowMapUniforms(
             *shader,
             *ctx.shadowMap,
-            transforms.Get(activeScene->GetDirectionalShadowCaster()),
+            registry.GetComponent<TransformComponent>(activeScene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
     }
 
     if (activeScene->GetPointShadowCaster() != UUID::Null
-        && transforms.Has(activeScene->GetPointShadowCaster())
-        )
+        && registry.HasComponent<TransformComponent>(activeScene->GetPointShadowCaster()))
     {
-
-        bindPointShadowUniforms(
-            *shader,
-            *ctx.shadowCubeMap
-        );
+        bindPointShadowUniforms(*shader, *ctx.shadowCubeMap);
     }
 
     shader->setVec3("cameraPos", ctx.cameraPos);
 
     fullscreenQuad.draw();
-
     shader->unuse();
-
 }
-

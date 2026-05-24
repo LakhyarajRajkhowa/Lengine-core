@@ -49,7 +49,7 @@ namespace Lengine {
         assetManager.Update(*editorScene);
         UpdateTimer();
 
-        transformSystem.Update(editorScene->Transforms(), editorScene->Hierarchys(), editorScene->GetRootEntities());
+        transformSystem.Update(editorScene->GetRegistry().transforms, editorScene->GetRegistry().hierarchies, editorScene->GetRootEntities());
 
     }
 
@@ -57,8 +57,8 @@ namespace Lengine {
     {
         Scene* runtimeScene = sceneManager.GetActiveScene(mode);
 
-        physicsSystem.update(deltaTime, runtimeScene->Transforms());
-        animationSystem.Update(runtimeScene->Animations(), runtimeScene->Skeletons(),  deltaTime);
+        physicsSystem.update(deltaTime, runtimeScene->GetRegistry().transforms);
+        animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
     }
 
 

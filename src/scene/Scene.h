@@ -3,7 +3,7 @@
 #include "resources/TextureCache.h"
 
 #include "scene/Entity.h"
-#include "scene/components/ComponentStorage.h"
+#include "scene/ECSRegistry.h"
 
 #include "assets/MaterialRegistry.h"
 
@@ -69,133 +69,9 @@ namespace Lengine {
 
         std::unique_ptr<Scene> Clone();
        
- 
-        const ComponentStorage<MeshRenderer>& MeshRenderers() const
-        {
-            return meshRenderers;
-        }
-
-        ComponentStorage<MeshRenderer>& MeshRenderers()
-        {
-            return meshRenderers;
-        }
-        const  ComponentStorage<MeshFilter>& MeshFilters() const {
-            return meshFilters;
-        }
-
-        ComponentStorage<MeshFilter>& MeshFilters() {
-            return meshFilters;
-        }
-
-        const ComponentStorage<TransformComponent>& Transforms() const
-        {
-            return transforms;
-        }
-
-        ComponentStorage<TransformComponent>& Transforms()
-        {
-            return transforms;
-        }
-
-
-        const ComponentStorage<HierarchyComponent>& Hierarchys() const
-        {
-            return hierarchys;
-        }
-
-        ComponentStorage<HierarchyComponent>& Hierarchys()
-        {
-            return hierarchys;
-        }
-
-
-        const ComponentStorage<NameTagComponent>& NameTags() const
-        {
-            return nameTags;
-        }
-
-        ComponentStorage<NameTagComponent>& NameTags()
-        {
-            return nameTags;
-        }
-
-
-        const ComponentStorage<SkeletonComponent>& Skeletons() const
-        {
-            return skeletons;
-        }
-
-        ComponentStorage<SkeletonComponent>& Skeletons()
-        {
-            return skeletons;
-        }
-
-
-        const ComponentStorage<AnimationComponent>& Animations() const
-        {
-            return animations;
-        }
-
-        ComponentStorage<AnimationComponent>& Animations()
-        {
-            return animations;
-        }
-
-
-        const ComponentStorage<CameraComponent>& Cameras() const
-        {
-            return cameras;
-        }
-
-        ComponentStorage<CameraComponent>& Cameras()
-        {
-            return cameras;
-        }
-
-
-        const ComponentStorage<ControllerComponent>& Controllers() const
-        {
-            return controllers;
-        }
-
-        ComponentStorage<ControllerComponent>& Controllers()
-        {
-            return controllers;
-        }
-
-
-        const ComponentStorage<ColliderComponent>& Colliders() const
-        {
-            return colliders;
-        }
-
-        ComponentStorage<ColliderComponent>& Colliders()
-        {
-            return colliders;
-        }
-
-
-        const ComponentStorage<RigidbodyComponent>& Rigidbodies() const
-        {
-            return rigidbodies;
-        }
-
-        ComponentStorage<RigidbodyComponent>& Rigidbodies()
-        {
-            return rigidbodies;
-        }
-
-
-        const ComponentStorage<Light>& Lights() const
-        {
-            return lights;
-        }
-
-        ComponentStorage<Light>& Lights()
-        {
-            return lights;
-        }
-
+        // Scene.h — just this
+        const Registry& GetRegistry() const { return registry; }
+        Registry& GetRegistry() { return registry; }
 
         const Entity& GetDirectionalShadowCaster() const {
             return directionalShadowCaster;
@@ -205,18 +81,18 @@ namespace Lengine {
         {
             // Clear old one
             if (directionalShadowCaster != UUID::Null &&
-                lights.Has(directionalShadowCaster))
+                registry.lights.Has(directionalShadowCaster))
             {
-                lights.Get(directionalShadowCaster).castShadow = false;
+                registry.lights.Get(directionalShadowCaster).castShadow = false;
             }
 
             directionalShadowCaster = entity;
 
             // Set new one
             if (directionalShadowCaster != UUID::Null &&
-                lights.Has(directionalShadowCaster))
+                registry.lights.Has(directionalShadowCaster))
             {
-                lights.Get(directionalShadowCaster).castShadow = true;
+                registry.lights.Get(directionalShadowCaster).castShadow = true;
             }
         }
 
@@ -227,17 +103,17 @@ namespace Lengine {
         void Scene::SetPointShadowCaster(Entity entity)
         {
             if (pointShadowCaster != NullEntity &&
-                lights.Has(pointShadowCaster))
+                registry.lights.Has(pointShadowCaster))
             {
-                lights.Get(pointShadowCaster).castShadow = false;
+                registry.lights.Get(pointShadowCaster).castShadow = false;
             }
 
             pointShadowCaster = entity;
 
             if (pointShadowCaster != NullEntity &&
-                lights.Has(pointShadowCaster))
+                registry.lights.Has(pointShadowCaster))
             {
-                lights.Get(pointShadowCaster).castShadow = true;
+                registry.lights.Get(pointShadowCaster).castShadow = true;
             }
         }
 
@@ -262,19 +138,8 @@ namespace Lengine {
         Entity primaryCamera = NullEntity;
         Entity directionalShadowCaster = NullEntity;
         Entity pointShadowCaster = NullEntity;
-
-        ComponentStorage<Light> lights;
-        ComponentStorage<HierarchyComponent> hierarchys;
-        ComponentStorage<CameraComponent> cameras;
-        ComponentStorage<MeshRenderer> meshRenderers;
-        ComponentStorage<MeshFilter> meshFilters;
-        ComponentStorage<TransformComponent> transforms;
-        ComponentStorage<NameTagComponent> nameTags;
-        ComponentStorage<SkeletonComponent> skeletons;
-        ComponentStorage<AnimationComponent> animations;
-        ComponentStorage<ControllerComponent> controllers;
-        ComponentStorage<ColliderComponent> colliders;
-        ComponentStorage<RigidbodyComponent> rigidbodies;
+        
+        Registry registry;
 
     };
 }

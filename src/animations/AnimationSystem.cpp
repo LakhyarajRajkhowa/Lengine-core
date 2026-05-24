@@ -1,6 +1,9 @@
 #include "AnimationSystem.h"
 #include <cmath>
 
+
+#include "utils/Profiler.h"
+
 namespace Lengine
 {
 
@@ -12,8 +15,17 @@ namespace Lengine
         float dt
     )
     {
-        for (auto& [entity, anim] : animComponents.All())
+
+
+        auto& dense = animComponents.GetDense();
+        auto& entities = animComponents.GetEntities();
+
+        for (size_t i = 0; i < dense.size(); ++i)
         {
+
+            AnimationComponent& anim = dense[i];
+            const Entity entity = entities[i];
+
             if (anim.currentAnimationID == UUID::Null)
                 continue;
 
@@ -23,7 +35,6 @@ namespace Lengine
             if (!animation)
                 continue;
 
-            // Advance animation time
             anim.currentTime +=
                 dt *
                 animation->ticksPerSecond *
@@ -54,6 +65,7 @@ namespace Lengine
         AnimationComponent& anim,
         float time)
     {
+
         if (!skeletons.Has(entity))
             return;
 
@@ -74,6 +86,8 @@ namespace Lengine
         if (!animation)
             return;
 
+        DEBUG_LOG_GAP("Applying Animation", 1000);
+
         if (anim.finalBoneMatrices.size() != skeleton->bones.size())
         {
             anim.finalBoneMatrices.resize(
@@ -81,11 +95,6 @@ namespace Lengine
                 glm::mat4(1.0f));
         }
 
-        ComputeBoneTransforms(
-            *skeleton,
-            *animation,
-            time,
-            anim.finalBoneMatrices);
     }
 
     void AnimationSystem::ComputeBoneTransforms(
@@ -94,6 +103,7 @@ namespace Lengine
         float time,
         std::vector<glm::mat4>& boneMatrices)
     {
+
         std::vector<glm::mat4> globalTransforms(skeleton.bones.size());
 
         for (size_t i = 0; i < skeleton.bones.size(); i++)
@@ -129,6 +139,7 @@ namespace Lengine
 
     glm::vec3 AnimationSystem::InterpolatePosition(AnimationTrack& track, float time, int delta)
     {
+
         if (track.positions.size() == 1)
             return track.positions[0].position;
 
@@ -155,6 +166,7 @@ namespace Lengine
 
     glm::quat AnimationSystem::InterpolateRotation(AnimationTrack& track, float time, int delta)
     {
+
         if (track.rotations.size() == 1)
             return track.rotations[0].rotation;
 

@@ -33,8 +33,8 @@ namespace Lengine {
             glCullFace(GL_FRONT);
             shadowMap.renderDepthMap(
                 ctx.scene->getEntities(),
-                ctx.scene->Transforms(),
-                ctx.scene->MeshFilters(),
+                ctx.scene->GetRegistry().transforms,
+                ctx.scene->GetRegistry().meshFilters,
                 ctx.scene->GetDirectionalShadowCaster(),
                 assetManager,
                 ctx.cameraPos
@@ -43,8 +43,8 @@ namespace Lengine {
 
             shadowCubemap.renderDepthCubeMap(
                 ctx.scene->getEntities(),
-                ctx.scene->Transforms(),
-                ctx.scene->MeshFilters(),
+                ctx.scene->GetRegistry().transforms,
+                ctx.scene->GetRegistry().meshFilters,
                 ctx.scene->GetPointShadowCaster(),
                 assetManager
             );

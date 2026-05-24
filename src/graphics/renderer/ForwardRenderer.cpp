@@ -147,10 +147,10 @@ void ForwardRenderer::bindPointShadowUniforms(
     shader.setFloat("farPlane", shadowCubeMap.getFarPlane());
 }
 
-void ForwardRenderer::RenderScene_pbr(
-    const RenderContext& ctx
-) {
+void ForwardRenderer::RenderScene_pbr(const RenderContext& ctx)
+{
     const Scene* activeScene = ctx.scene;
+    const Registry& registry = activeScene->GetRegistry();
 
     GLSLProgram* pbrShader = assetManager.getShader(ShaderRegistry::UNIVERSAL_PBR);
     pbrShader->use();
@@ -161,25 +161,13 @@ void ForwardRenderer::RenderScene_pbr(
     pbrShader->setFloat("envIntensity", ctx.envIntensity);
     pbrShader->setVec3("envTint", ctx.envTint);
     pbrShader->setMat3("envRotation", ctx.envRotation);
-
-
     pbrShader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
     pbrShader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
-    const auto& entities = activeScene->getEntities();
-    auto& meshRenderers = activeScene->MeshRenderers();
-    auto& meshFilters = activeScene->MeshFilters();
-    auto& lightComponents = activeScene->Lights();
-    auto& transforms = activeScene->Transforms();
-    auto& animations = activeScene->Animations();
-
-
-    // Bind camera once (view & projection are global)
     pbrShader->setMat4("view", ctx.cameraView);
     pbrShader->setMat4("projection", ctx.cameraProjection);
     pbrShader->setVec3("cameraPos", ctx.cameraPos);
 
-    // bind pre-computed IBL data
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Irradiance));
     glBindTexture(GL_TEXTURE_CUBE_MAP, ctx.irradianceMap.id);
 
@@ -189,158 +177,102 @@ void ForwardRenderer::RenderScene_pbr(
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::BRDF_LUT));
     glBindTexture(GL_TEXTURE_2D, ctx.brdfLUTMap.id);
 
-
     if (activeScene->GetDirectionalShadowCaster() != UUID::Null
-        && transforms.Has(activeScene->GetDirectionalShadowCaster())
-        )
+        && registry.HasComponent<TransformComponent>(activeScene->GetDirectionalShadowCaster()))
     {
         bindShadowMapUniforms(
             *pbrShader,
             *ctx.shadowMap,
-            transforms.Get(activeScene->GetDirectionalShadowCaster()),
+            registry.GetComponent<TransformComponent>(activeScene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
     }
 
-
     if (activeScene->GetPointShadowCaster() != UUID::Null
-        && transforms.Has(activeScene->GetPointShadowCaster())
-        )
+        && registry.HasComponent<TransformComponent>(activeScene->GetPointShadowCaster()))
     {
-
-        bindPointShadowUniforms(
-            *pbrShader,
-            *ctx.shadowCubeMap
-        );
+        bindPointShadowUniforms(*pbrShader, *ctx.shadowCubeMap);
     }
 
-       
     uint32_t lightNum = 0;
 
-    for (const auto& [id, light] : lightComponents.All())
+    const auto& lightDense = registry.lights.GetDense();
+    const auto& lightEntities = registry.lights.GetEntities();
+
+    for (size_t i = 0; i < lightDense.size() && lightNum < MAX_LIGHTS; ++i)
     {
-        if (!transforms.Has(id))
+        const Entity id = lightEntities[i];
+        const Light& l = lightDense[i];
+
+        if (!registry.HasComponent<TransformComponent>(id))
             continue;
 
-        if (lightNum >= MAX_LIGHTS)
-            break;
+        pbrShader->setInt("lightTypes[" + std::to_string(lightNum) + "]", static_cast<int>(l.type));
+        pbrShader->setVec3("lightColors[" + std::to_string(lightNum) + "]", l.color);
+        pbrShader->setFloat("lightIntensities[" + std::to_string(lightNum) + "]", l.intensity);
+        pbrShader->setBool("lightCastShadow[" + std::to_string(lightNum) + "]", l.castShadow);
+        pbrShader->setFloat("lightRanges[" + std::to_string(lightNum) + "]", l.range);
+        pbrShader->setFloat("lightInnerAngles[" + std::to_string(lightNum) + "]", glm::cos(glm::radians(l.innerAngle)));
+        pbrShader->setFloat("lightOuterAngles[" + std::to_string(lightNum) + "]", glm::cos(glm::radians(l.outerAngle)));
 
-        const Light& l = light;
+        const TransformComponent& t = registry.GetComponent<TransformComponent>(id);
 
-        // ---------------- Common ----------------
-        pbrShader->setInt(
-            "lightTypes[" + std::to_string(lightNum) + "]",
-            static_cast<int>(l.type)
-        );
-
-        pbrShader->setVec3(
-            "lightColors[" + std::to_string(lightNum) + "]",
-            l.color
-        );
-
-        pbrShader->setFloat(
-            "lightIntensities[" + std::to_string(lightNum) + "]",
-            l.intensity
-        );
-
-        pbrShader->setBool(
-            "lightCastShadow[" + std::to_string(lightNum) + "]",
-            light.castShadow
-        );
-
-        // ---------------- Point & Spot ----------------
-        pbrShader->setFloat(
-            "lightRanges[" + std::to_string(lightNum) + "]",
-            l.range
-        );
-
-        // ---------------- Spot only ----------------
-        pbrShader->setFloat(
-            "lightInnerAngles[" + std::to_string(lightNum) + "]",
-            glm::cos(glm::radians(l.innerAngle))
-        );
-
-        pbrShader->setFloat(
-            "lightOuterAngles[" + std::to_string(lightNum) + "]",
-            glm::cos(glm::radians(l.outerAngle))
-        );
-
-        const TransformComponent& t = transforms.Get(id);
-
-        glm::vec3 position = t.GetWorldPosition();
-        glm::quat rotation = t.GetWorldRotation();
-
-        pbrShader->setVec3(
-            "lightPositions[" + std::to_string(lightNum) + "]",
-            position
-        );
-
-        glm::vec3 direction = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-
-        pbrShader->setVec3(
-            "lightDirections[" + std::to_string(lightNum) + "]",
-            direction
-        );
+        pbrShader->setVec3("lightPositions[" + std::to_string(lightNum) + "]", t.GetWorldPosition());
+        pbrShader->setVec3("lightDirections[" + std::to_string(lightNum) + "]",
+            glm::normalize(t.GetWorldRotation() * glm::vec3(0.0f, 0.0f, -1.0f)));
 
         ++lightNum;
-
-       
     }
 
     pbrShader->setInt("lightCount", lightNum);
 
+    const auto& mrDense = registry.meshRenderers.GetDense();
+    const auto& mrEntities = registry.meshRenderers.GetEntities();
 
-    for (auto& [entityID, mr] : meshRenderers.All()) {
+    for (size_t i = 0; i < mrDense.size(); ++i)
+    {
+        const MeshRenderer& mr = mrDense[i];
+        const Entity entityID = mrEntities[i];
 
-        if (!transforms.Has(entityID)) continue;
-        if (!meshFilters.Has(entityID)) continue;
+        if (!mr.render) continue;
+        if (mr.inst.baseMaterial.isNull()) continue;
+        if (!registry.HasComponent<TransformComponent>(entityID)) continue;
+        if (!registry.HasComponent<MeshFilter>(entityID)) continue;
 
-
-        const TransformComponent& t = transforms.Get(entityID);
-        const MeshFilter& mf = meshFilters.Get(entityID);
-
+        const TransformComponent& t = registry.GetComponent<TransformComponent>(entityID);
+        const MeshFilter& mf = registry.GetComponent<MeshFilter>(entityID);
 
         if (mf.HasPendingSubmesh()) continue;
-        if (mr.inst.baseMaterial.isNull() || !mr.render) continue;
 
-        glm::mat4 model = t.worldMatrix;
-        pbrShader->setMat4("model", model);
+        pbrShader->setMat4("model", t.worldMatrix);
 
         Mesh* mesh = nullptr;
-
-        if (!mf.meshID.isNull()) {
+        if (!mf.meshID.isNull())
             mesh = assetManager.GetSubmesh(mf.meshID);
-        }
-       
-        // Animation
 
         pbrShader->setBool("useSkeleton", false);
 
-        if (animations.Has(mf.rootParent))
+        if (registry.HasComponent<AnimationComponent>(mf.rootParent))
         {
-            const AnimationComponent& anim = animations.Get(mf.rootParent);
+            const AnimationComponent& anim = registry.GetComponent<AnimationComponent>(mf.rootParent);
 
-            if (mesh &&
-                anim.currentAnimationID != UUID::Null &&
-                anim.finalBoneMatrices.size())
+            if (mesh
+                && anim.currentAnimationID != UUID::Null
+                && !anim.finalBoneMatrices.empty())
             {
-                for (int i = 0; i < mesh->bonePalette.size(); i++)
+                for (int b = 0; b < (int)mesh->bonePalette.size(); ++b)
                 {
-                    int globalID = mesh->bonePalette[i];
-
+                    int globalID = mesh->bonePalette[b];
                     pbrShader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(i) + "]",
+                        "finalBonesMatrices[" + std::to_string(b) + "]",
                         anim.finalBoneMatrices[globalID]
                     );
                 }
-
                 pbrShader->setBool("useSkeleton", true);
             }
         }
-        
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
-
         if (!mat) continue;
 
         const MaterialInstance& inst = mr.inst;
@@ -352,292 +284,256 @@ void ForwardRenderer::RenderScene_pbr(
         pbrShader->setFloat("material.ao", finalMat.ao);
         pbrShader->setFloat("material.normalStrength", finalMat.normalStrength);
 
-
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_albedo,
-            inst.use_map_albedo,
-            "material.hasAlbedoMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_albedo,
+            inst.use_map_albedo, "material.hasAlbedoMap",
             "material.albedoMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Albedo)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Albedo);
 
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_normal,
-            inst.use_map_normal,
-            "material.hasNormalMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_normal,
+            inst.use_map_normal, "material.hasNormalMap",
             "material.normalMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Normal)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Normal);
 
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_ao,
-            inst.use_map_ao,
-            "material.hasAOMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_ao,
+            inst.use_map_ao, "material.hasAOMap",
             "material.aoMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::AO)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::AO);
 
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_metallic,
-            inst.use_map_metallic,
-            "material.hasMetallicMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_metallic,
+            inst.use_map_metallic, "material.hasMetallicMap",
             "material.metallicMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Metallic)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Metallic);
 
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_roughness,
-            inst.use_map_roughness,
-            "material.hasRoughnessMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_roughness,
+            inst.use_map_roughness, "material.hasRoughnessMap",
             "material.roughnessMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Roughness)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::Roughness);
 
-        bindTexture(
-            *pbrShader,
-            assetManager,
-            finalMat.map_metallicRoughness,
-            inst.use_map_metallicRoughness,
-            "material.hasMetallicRoughnessMap",
+        bindTexture(*pbrShader, assetManager, finalMat.map_metallicRoughness,
+            inst.use_map_metallicRoughness, "material.hasMetallicRoughnessMap",
             "material.metallicRoughnessMap",
-            GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::MetallicRoughness)
-        );
+            GL_TEXTURE0 + (unsigned)TextureUnit::MetallicRoughness);
 
-
-            if(mesh) mesh->draw();
-              
-                
+        if (mesh) mesh->draw();
     }
 
     pbrShader->unuse();
 }
-
-
 void ForwardRenderer::RenderScene_debug(
     const RenderContext& ctx
 ) {
 
 
-    const Scene* activeScene = ctx.scene;
-    
+    //const Scene* activeScene = ctx.scene;
+    //
 
-    GLSLProgram* shader = assetManager.getShader(ShaderRegistry::DEBUG);
-    GLSLProgram* outlineShader = assetManager.getShader(ShaderRegistry::OUTLINE);
+    //GLSLProgram* shader = assetManager.getShader(ShaderRegistry::DEBUG);
+    //GLSLProgram* outlineShader = assetManager.getShader(ShaderRegistry::OUTLINE);
 
-    const auto& entities = activeScene->getEntities();
-    auto& meshRenderers = activeScene->MeshRenderers();
-    auto& meshFilters = activeScene->MeshFilters();
-    auto& lightComponents = activeScene->Lights();
-    auto& transforms = activeScene->Transforms();
-    auto& animations = activeScene->Animations();
+    //const auto& entities = activeScene->getEntities();
+    //auto& meshRenderers = activeScene->MeshRenderers();
+    //auto& meshFilters = activeScene->MeshFilters();
+    //auto& lightComponents = activeScene->Lights();
+    //auto& transforms = activeScene->Transforms();
+    //auto& animations = activeScene->Animations();
 
 
 
-    if (debugViewMode == DebugView::Geometry)
-    {
-        // -------- SOLID PASS --------
-        shader->use();
+    //if (debugViewMode == DebugView::Geometry)
+    //{
+    //    // -------- SOLID PASS --------
+    //    shader->use();
 
-        shader->setInt("u_DebugMode", static_cast<int>(IRenderer::debugViewMode));
-        shader->setMat4("view", ctx.cameraView);
-        shader->setMat4("projection", ctx.cameraProjection);
-        shader->setVec3("cameraPos", ctx.cameraPos);
+    //    shader->setInt("u_DebugMode", static_cast<int>(IRenderer::debugViewMode));
+    //    shader->setMat4("view", ctx.cameraView);
+    //    shader->setMat4("projection", ctx.cameraProjection);
+    //    shader->setVec3("cameraPos", ctx.cameraPos);
 
-        for (auto& [entityID, mr] : meshRenderers.All())
-        {
-            if (!transforms.Has(entityID)) continue;
-            if (!meshFilters.Has(entityID)) continue;
+    //    for (auto& [entityID, mr] : meshRenderers.All())
+    //    {
+    //        if (!transforms.Has(entityID)) continue;
+    //        if (!meshFilters.Has(entityID)) continue;
 
-            const TransformComponent& t = transforms.Get(entityID);
-            const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
+    //        const TransformComponent& t = transforms.Get(entityID);
+    //        const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
 
-            
-            shader->setMat4("model", t.worldMatrix);
+    //        
+    //        shader->setMat4("model", t.worldMatrix);
 
-            Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
+    //        Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
 
-            // Animation
-            if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
-            {
+    //        // Animation
+    //        if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
+    //        {
 
-                for (int i = 0; i < sm->bonePalette.size(); i++)
-                {
-                    int globalID = sm->bonePalette[i];
+    //            for (int i = 0; i < sm->bonePalette.size(); i++)
+    //            {
+    //                int globalID = sm->bonePalette[i];
 
-                    shader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(i) + "]",
-                        anim.finalBoneMatrices[globalID]
-                    );
-                }
+    //                shader->setMat4(
+    //                    "finalBonesMatrices[" + std::to_string(i) + "]",
+    //                    anim.finalBoneMatrices[globalID]
+    //                );
+    //            }
 
 
-            }
+    //        }
 
-            if (sm) sm->draw();
-        }
+    //        if (sm) sm->draw();
+    //    }
 
-        shader->unuse();
+    //    shader->unuse();
 
 
-        // -------- WIREFRAME OVERLAY --------
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glLineWidth(1.5f);
+    //    // -------- WIREFRAME OVERLAY --------
+    //    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //    glLineWidth(1.5f);
 
-        outlineShader->use();
-        outlineShader->setMat4("view", ctx.cameraView);
-        outlineShader->setMat4("projection", ctx.cameraProjection);
+    //    outlineShader->use();
+    //    outlineShader->setMat4("view", ctx.cameraView);
+    //    outlineShader->setMat4("projection", ctx.cameraProjection);
 
-        for (auto& [entityID, mr] : meshRenderers.All())
-        {
-            if (!transforms.Has(entityID)) continue;
-            if (!meshFilters.Has(entityID)) continue;
+    //    for (auto& [entityID, mr] : meshRenderers.All())
+    //    {
+    //        if (!transforms.Has(entityID)) continue;
+    //        if (!meshFilters.Has(entityID)) continue;
 
-            const TransformComponent& t = transforms.Get(entityID);
+    //        const TransformComponent& t = transforms.Get(entityID);
 
-            outlineShader->setMat4("model", t.worldMatrix);
+    //        outlineShader->setMat4("model", t.worldMatrix);
 
-            Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
+    //        Mesh* sm = assetManager.GetSubmesh(meshFilters.Get(entityID).meshID);
 
-            // Animation
+    //        // Animation
 
-            if (animations.Has(meshFilters.Get(entityID).rootParent)) {
-                const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
+    //        if (animations.Has(meshFilters.Get(entityID).rootParent)) {
+    //            const AnimationComponent& anim = animations.Get(meshFilters.Get(entityID).rootParent);
 
-                if (sm && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
-                {
+    //            if (sm && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
+    //            {
 
-                    for (int i = 0; i < sm->bonePalette.size(); i++)
-                    {
-                        int globalID = sm->bonePalette[i];
+    //                for (int i = 0; i < sm->bonePalette.size(); i++)
+    //                {
+    //                    int globalID = sm->bonePalette[i];
 
-                        outlineShader->setMat4(
-                            "finalBonesMatrices[" + std::to_string(i) + "]",
-                            anim.finalBoneMatrices[globalID]
-                        );
-                    }
+    //                    outlineShader->setMat4(
+    //                        "finalBonesMatrices[" + std::to_string(i) + "]",
+    //                        anim.finalBoneMatrices[globalID]
+    //                    );
+    //                }
 
 
-                }
+    //            }
 
-            }
-               
-           
-            if (sm) sm->draw();
-        }
+    //        }
+    //           
+    //       
+    //        if (sm) sm->draw();
+    //    }
 
-        outlineShader->unuse();
+    //    outlineShader->unuse();
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    //    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        return;
-    }
+    //    return;
+    //}
 
 
 
-    shader->use();
+    //shader->use();
 
-    shader->setInt("u_DebugMode", static_cast<int>(IRenderer::debugViewMode));
+    //shader->setInt("u_DebugMode", static_cast<int>(IRenderer::debugViewMode));
 
 
-    // Bind camera once (view & projection are global)
-    shader->setMat4("view", ctx.cameraView);
-    shader->setMat4("projection", ctx.cameraProjection);
-    shader->setVec3("cameraPos", ctx.cameraPos);
+    //// Bind camera once (view & projection are global)
+    //shader->setMat4("view", ctx.cameraView);
+    //shader->setMat4("projection", ctx.cameraProjection);
+    //shader->setVec3("cameraPos", ctx.cameraPos);
 
 
-    for (auto& [entityID, mr] : meshRenderers.All()) {
+    //for (auto& [entityID, mr] : meshRenderers.All()) {
 
-        if (!transforms.Has(entityID)) continue;
-        if (!meshFilters.Has(entityID)) continue;
+    //    if (!transforms.Has(entityID)) continue;
+    //    if (!meshFilters.Has(entityID)) continue;
 
 
-        const TransformComponent& t = transforms.Get(entityID);
-        const MeshFilter& mf = meshFilters.Get(entityID);
-        const AnimationComponent& anim = animations.Get(mf.rootParent);
+    //    const TransformComponent& t = transforms.Get(entityID);
+    //    const MeshFilter& mf = meshFilters.Get(entityID);
+    //    const AnimationComponent& anim = animations.Get(mf.rootParent);
 
 
-        if (mf.HasPendingSubmesh()) continue;
-        if (mr.inst.baseMaterial.isNull()) continue;
+    //    if (mf.HasPendingSubmesh()) continue;
+    //    if (mr.inst.baseMaterial.isNull()) continue;
 
-        glm::mat4 model = t.worldMatrix;
-        shader->setMat4("model", model);
+    //    glm::mat4 model = t.worldMatrix;
+    //    shader->setMat4("model", model);
 
 
-        Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
+    //    Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
 
-        if (!mat) continue;
+    //    if (!mat) continue;
 
-        const MaterialInstance& inst = mr.inst;
+    //    const MaterialInstance& inst = mr.inst;
 
 
 
-        const ResolvedMaterial& finalMat = ResolveMaterial(*mat, inst);
+    //    const ResolvedMaterial& finalMat = ResolveMaterial(*mat, inst);
 
-        shader->setVec3("albedoColor", finalMat.albedo);
-        shader->setFloat("normalStrength", finalMat.normalStrength);
-        shader->setFloat("nearPlane", 0.1f);
-        shader->setFloat("farPlane", 1000.0f);
+    //    shader->setVec3("albedoColor", finalMat.albedo);
+    //    shader->setFloat("normalStrength", finalMat.normalStrength);
+    //    shader->setFloat("nearPlane", 0.1f);
+    //    shader->setFloat("farPlane", 1000.0f);
 
 
 
-        bindTexture(
-            *shader,
-            assetManager,
-            finalMat.map_albedo,
-            inst.use_map_albedo,
-            "hasAlbedoMap",
-            "albedoMap",
-            GL_TEXTURE1
-        );
+    //    bindTexture(
+    //        *shader,
+    //        assetManager,
+    //        finalMat.map_albedo,
+    //        inst.use_map_albedo,
+    //        "hasAlbedoMap",
+    //        "albedoMap",
+    //        GL_TEXTURE1
+    //    );
 
-        bindTexture(
-            *shader,
-            assetManager,
-            finalMat.map_normal,
-            inst.use_map_normal,
-            "hasNormalMap",
-            "normalMap",
-            GL_TEXTURE2
-        );
+    //    bindTexture(
+    //        *shader,
+    //        assetManager,
+    //        finalMat.map_normal,
+    //        inst.use_map_normal,
+    //        "hasNormalMap",
+    //        "normalMap",
+    //        GL_TEXTURE2
+    //    );
 
 
-        // new
-        if (!mf.meshID.isNull()) {
-            Mesh* sm = assetManager.GetSubmesh(mf.meshID);
+    //    // new
+    //    if (!mf.meshID.isNull()) {
+    //        Mesh* sm = assetManager.GetSubmesh(mf.meshID);
 
-            // Animation
-            if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
-            {
+    //        // Animation
+    //        if (sm  && anim.currentAnimationID != UUID::Null && anim.finalBoneMatrices.size())
+    //        {
 
-                for (int i = 0; i < sm->bonePalette.size(); i++)
-                {
-                    int globalID = sm->bonePalette[i];
+    //            for (int i = 0; i < sm->bonePalette.size(); i++)
+    //            {
+    //                int globalID = sm->bonePalette[i];
 
-                    shader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(i) + "]",
-                        anim.finalBoneMatrices[globalID]
-                    );
-                }
+    //                shader->setMat4(
+    //                    "finalBonesMatrices[" + std::to_string(i) + "]",
+    //                    anim.finalBoneMatrices[globalID]
+    //                );
+    //            }
 
 
-            }
+    //        }
 
-            if (sm) sm->draw();
-        }
+    //        if (sm) sm->draw();
+    //    }
 
-    }
+    //}
 
-    shader->unuse();
+    //shader->unuse();
 
 }
 

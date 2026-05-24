@@ -1,515 +1,457 @@
 #include "Scene.h"
-
 #include "utils/C++20.h"
-
 #include <iostream>
 
 using namespace Lengine;
 
-  
+Entity* Scene::createEntity_root(const std::string& name)
+{
+    Entity id = nextEntityID++;
+    auto entity = std::make_unique<Entity>(id);
+    registry.nameTags.Add(id, NameTagComponent(name));
 
-    Entity* Scene::createEntity_root (
-        const std::string& name   
-    ) 
+    Entity* entityPtr = entity.get();
+    entities.push_back(std::move(entity));
+    rootEntities.push_back(id);
+
+    return entityPtr;
+}
+
+Entity* Scene::createEntity(const std::string& name)
+{
+    Entity id = nextEntityID++;
+    auto entity = std::make_unique<Entity>(id);
+    registry.nameTags.Add(id, NameTagComponent(name));
+
+    Entity* entityPtr = entity.get();
+    entities.push_back(std::move(entity));
+
+    return entityPtr;
+}
+
+Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot)
+{
+    auto entity = std::make_unique<Entity>(nextEntityID++);
+
+    Entity* newEntity = addEntity(std::move(entity), originalID);
+    Entity newID = *newEntity;
+
+    if (newRoot == NullEntity)
+        newRoot = newID;
+
+    if (newParent != NullEntity)
     {
-        Entity id = nextEntityID++;
-        auto entity = std::make_unique<Entity>(id);
-        nameTags.Add(id, NameTagComponent(name));
+        auto& h = registry.hierarchies.Add(newID);
+        h.parent = newParent;
+        registry.hierarchies.Get(newParent).children.push_back(newID);
 
-        Entity* entityPtr = entity.get();
-
-        entities.push_back(std::move(entity));
-
-        rootEntities.push_back(id);
-
-        return entityPtr;
-    }
-
-    Entity* Scene::createEntity(
-        const std::string& name
-    ) {
-        Entity id = nextEntityID++;
-        auto entity = std::make_unique<Entity>(id);
-        nameTags.Add(id, NameTagComponent(name));
-
-        Entity* entityPtr = entity.get();
-
-        entities.push_back(std::move(entity));
-
-        return entityPtr;
-    }
-    Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot)
-    {
-        auto entity = std::make_unique<Entity>(nextEntityID++);
-
-        Entity* newEntity = addEntity(std::move(entity), originalID);
-        Entity newID = *newEntity;
-
-        if (newRoot == NullEntity)
-            newRoot = newID;
-
-        // hierarchy
-        if (newParent != NullEntity)
-        {
-            auto& h = hierarchys.Add(newID);
-            h.parent = newParent;
-            hierarchys.Get(newParent).children.push_back(newID);
-
-            rootEntities.erase(
-                std::remove(rootEntities.begin(), rootEntities.end(), newID),
-                rootEntities.end()
-            );
-        }
-        else
-        {
-            hierarchys.Add(newID);
-        }
-
-        // fix mesh filter root
-        if (meshFilters.Has(newID))
-        {
-            meshFilters.Get(newID).rootParent = newRoot;
-        }
-
-        // duplicate children
-        if (hierarchys.Has(originalID))
-        {
-            const auto& children = hierarchys.Get(originalID).children;
-
-            for (Entity child : children)
-            {
-                DuplicateEntityRecursive(child, newID, newRoot);
-            }
-        }
-
-        return newID;
-    }
-
-    Entity Scene::DuplicateHierarchy(Entity rootID)
-    {
-        return DuplicateEntityRecursive(rootID, NullEntity, NullEntity);
-    }
-
-    Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId)
-    {
-        if (!entity)
-            return nullptr;
-
-        // Ensure entity has a valid UUID
-        if (entity == NullEntity)
-        {
-            *entity = nextEntityID++;
-        }
-
-        Entity entityId = *entity;
-
-        // Copy Transforms
-        if (Transforms().Has(originalEntityId)) {
-            const TransformComponent& oldTrans = Transforms().Get(originalEntityId);
-            TransformComponent newTrans = TransformComponent(oldTrans);
-            transforms.Add(entityId, newTrans);
-
-            // offset the position a bit
-            auto& t = Transforms().Get(entityId);
-            glm::vec3 offset = glm::vec3{ (t.GetWorldScale().x * 1.0f), 0.0f, (t.GetWorldScale().z * 1.0f), };
-
-            t.localPosition += offset;
-            t.localDirty = true;
-
-            TransformSystem::Dirty = true;
-        }
-
-        // Copy mesh filters
-        if (MeshFilters().Has(originalEntityId)) {
-            const MeshFilter& oldMf = MeshFilters().Get(originalEntityId);
-            meshFilters.Add(entityId, MeshFilter(oldMf.meshID, entityId));
-
-            
-            std::cout << " Scene.cpp :: root: " << GetRootParent(entityId) << std::endl;
-
-        }
-
-        // Copy mesh Renderer
-        if (MeshRenderers().Has(originalEntityId)) {
-            const MeshRenderer& oldMr = MeshRenderers().Get(originalEntityId);
-            MeshRenderer newMr = MeshRenderer(oldMr);
-            meshRenderers.Add(entityId, newMr);
-        }
-
-        // Copy light component
-        if (Lights().Has(originalEntityId)) {
-            const Light& oldLight = Lights().Get(originalEntityId);
-            Light newLight = Light(oldLight);
-            lights.Add(entityId);
-        }
-
-        // Name tag 
-        if (NameTags().Has(originalEntityId))
-        {
-            auto& tag = NameTags().Get(originalEntityId);
-            std::string newName = GenerateDuplicateName(this, tag.name);
-            NameTags().Add(entityId, NameTagComponent(newName));
-        }
-        
-        //// -------- SKELETON (root) --------
-        if (Skeletons().Has(originalEntityId)) {
-            auto& sk = Skeletons().Get(originalEntityId);
-           Skeletons().Add(entityId, SkeletonComponent(sk.skeletonID));
-
-        }
-
-        //// -------- ANIMATION (root) --------
-
-        if (Animations().Has(originalEntityId)) {
-            AnimationComponent& anim = Animations().Get(originalEntityId);
-           Animations().Add(entityId , AnimationComponent(anim.animationIDs));
-        }
-
-        // ----- COLLIDER ----
-        //if (Colliders().Has(originalEntityId)) {
-        //    ColliderComponent& col = Colliders().Get(originalEntityId);    
-        //    Colliders().Add(entityId, ColliderComponent(col.shapes));
-        //}
-
-        
-        entities.push_back(std::move(entity));
-        rootEntities.push_back(entityId);
-        return entities.back().get();
-    }
-
-    Entity Scene::GetRootParent(const Entity& entityID)
-    {
-        Entity currentID = entityID;
-
-        while (Hierarchys().Has(currentID))
-        {
-            auto& h = Hierarchys().Get(currentID);
-
-            if (h.parent == NullEntity)
-                break;
-
-            currentID = h.parent;
-        }
-
-        return currentID;
-    }
-
-    void Scene::RemoveEntity(const Entity id)
-    {
-        // Remove from hierarchy first (important)
-        if (hierarchys.Has(id))
-        {
-            auto& h = hierarchys.Get(id);
-
-            // Detach children → make them roots
-            for (Entity child : h.children)
-            {
-                if (hierarchys.Has(child))
-                {
-                    hierarchys.Get(child).parent = NullEntity;
-                    rootEntities.push_back(child);
-                }
-            }
-
-            // Remove from parent children list
-            if (h.parent != NullEntity && hierarchys.Has(h.parent))
-            {
-                auto& parentH = hierarchys.Get(h.parent);
-                parentH.children.erase(
-                    std::remove(parentH.children.begin(),
-                        parentH.children.end(),
-                        id),
-                    parentH.children.end()
-                );
-            }
-
-            hierarchys.Remove(id);
-        }
-
-        // Remove from rootEntities
         rootEntities.erase(
-            std::remove(rootEntities.begin(), rootEntities.end(), id),
+            std::remove(rootEntities.begin(), rootEntities.end(), newID),
             rootEntities.end()
         );
+    }
+    else
+    {
+        registry.hierarchies.Add(newID);
+    }
 
-        // Remove entity object
-        entities.erase(
-            std::remove_if(
-                entities.begin(),
-                entities.end(),
-                [&](const std::unique_ptr<Entity>& e)
-                {
-                    return *e == id;
-                }
-            ),
-            entities.end()
+    if (registry.meshFilters.Has(newID))
+    {
+        registry.meshFilters.Get(newID).rootParent = newRoot;
+    }
+
+    if (registry.hierarchies.Has(originalID))
+    {
+        const auto& children = registry.hierarchies.Get(originalID).children;
+
+        for (Entity child : children)
+        {
+            DuplicateEntityRecursive(child, newID, newRoot);
+        }
+    }
+
+    return newID;
+}
+
+Entity Scene::DuplicateHierarchy(Entity rootID)
+{
+    return DuplicateEntityRecursive(rootID, NullEntity, NullEntity);
+}
+
+Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId)
+{
+    if (!entity)
+        return nullptr;
+
+    if (*entity == NullEntity)
+    {
+        *entity = nextEntityID++;
+    }
+
+    Entity entityId = *entity;
+
+    if (registry.transforms.Has(originalEntityId)) {
+        const TransformComponent& oldTrans = registry.transforms.Get(originalEntityId);
+        TransformComponent newTrans = TransformComponent(oldTrans);
+        registry.transforms.Add(entityId, newTrans);
+
+        auto& t = registry.transforms.Get(entityId);
+        glm::vec3 offset = glm::vec3{ (t.GetWorldScale().x * 1.0f), 0.0f, (t.GetWorldScale().z * 1.0f) };
+
+        t.localPosition += offset;
+        t.localDirty = true;
+
+        TransformSystem::Dirty = true;
+    }
+
+    if (registry.meshFilters.Has(originalEntityId)) {
+        const MeshFilter& oldMf = registry.meshFilters.Get(originalEntityId);
+        registry.meshFilters.Add(entityId, MeshFilter(oldMf.meshID, entityId));
+
+        std::cout << " Scene.cpp :: root: " << GetRootParent(entityId) << std::endl;
+    }
+
+    if (registry.meshRenderers.Has(originalEntityId)) {
+        const MeshRenderer& oldMr = registry.meshRenderers.Get(originalEntityId);
+        MeshRenderer newMr = MeshRenderer(oldMr);
+        registry.meshRenderers.Add(entityId, newMr);
+    }
+
+    if (registry.lights.Has(originalEntityId)) {
+        registry.lights.Add(entityId);
+    }
+
+    if (registry.nameTags.Has(originalEntityId))
+    {
+        auto& tag = registry.nameTags.Get(originalEntityId);
+        std::string newName = GenerateDuplicateName(this, tag.name);
+        registry.nameTags.Add(entityId, NameTagComponent(newName));
+    }
+
+    if (registry.skeletons.Has(originalEntityId)) {
+        auto& sk = registry.skeletons.Get(originalEntityId);
+        registry.skeletons.Add(entityId, SkeletonComponent(sk.skeletonID));
+    }
+
+    if (registry.animations.Has(originalEntityId)) {
+        AnimationComponent& anim = registry.animations.Get(originalEntityId);
+        registry.animations.Add(entityId, AnimationComponent(anim.animationIDs));
+    }
+
+    // ----- COLLIDER ----
+    //if (registry.colliders.Has(originalEntityId)) {
+    //    ColliderComponent& col = registry.colliders.Get(originalEntityId);    
+    //    registry.colliders.Add(entityId, ColliderComponent(col.shapes));
+    //}
+
+    entities.push_back(std::move(entity));
+    rootEntities.push_back(entityId);
+    return entities.back().get();
+}
+
+Entity Scene::GetRootParent(const Entity& entityID)
+{
+    Entity currentID = entityID;
+
+    while (registry.hierarchies.Has(currentID))
+    {
+        auto& h = registry.hierarchies.Get(currentID);
+
+        if (h.parent == NullEntity)
+            break;
+
+        currentID = h.parent;
+    }
+
+    return currentID;
+}
+
+void Scene::RemoveEntity(const Entity id)
+{
+    if (registry.hierarchies.Has(id))
+    {
+        auto& h = registry.hierarchies.Get(id);
+
+        for (Entity child : h.children)
+        {
+            if (registry.hierarchies.Has(child))
+            {
+                registry.hierarchies.Get(child).parent = NullEntity;
+                rootEntities.push_back(child);
+            }
+        }
+
+        if (h.parent != NullEntity && registry.hierarchies.Has(h.parent))
+        {
+            auto& parentH = registry.hierarchies.Get(h.parent);
+            parentH.children.erase(
+                std::remove(parentH.children.begin(),
+                    parentH.children.end(),
+                    id),
+                parentH.children.end()
+            );
+        }
+
+        registry.hierarchies.Remove(id);
+    }
+
+    rootEntities.erase(
+        std::remove(rootEntities.begin(), rootEntities.end(), id),
+        rootEntities.end()
+    );
+
+    entities.erase(
+        std::remove_if(
+            entities.begin(),
+            entities.end(),
+            [&](const std::unique_ptr<Entity>& e)
+            {
+                return *e == id;
+            }
+        ),
+        entities.end()
+    );
+
+    if (registry.transforms.Has(id))    registry.transforms.Remove(id);
+    if (registry.meshFilters.Has(id))   registry.meshFilters.Remove(id);
+    if (registry.meshRenderers.Has(id)) registry.meshRenderers.Remove(id);
+    if (registry.lights.Has(id))        registry.lights.Remove(id);
+    if (registry.nameTags.Has(id))      registry.nameTags.Remove(id);
+    if (registry.animations.Has(id))    registry.animations.Remove(id);
+    if (registry.cameras.Has(id))       registry.cameras.Remove(id);
+}
+
+void Scene::RemoveEntityRecursive(Entity id)
+{
+    if (registry.hierarchies.Has(id))
+    {
+        auto children = registry.hierarchies.Get(id).children;
+        for (Entity child : children)
+            RemoveEntityRecursive(child);
+    }
+
+    RemoveEntity(id);
+}
+
+const Entity* Scene::getEntityByID(const Entity& id) const {
+    for (auto& entity : entities) {
+        if (*entity == id) {
+            return entity.get();
+        }
+    }
+    return nullptr;
+}
+
+Entity* Scene::getEntityByID(const Entity& id) {
+    if (id == NullEntity)
+        return nullptr;
+
+    for (auto& entity : entities) {
+        if (*entity == id) {
+            return entity.get();
+        }
+    }
+    return nullptr;
+}
+
+bool Scene::HasChildren(Entity entityID) const
+{
+    if (!registry.hierarchies.Has(entityID))
+        return false;
+
+    return !registry.hierarchies.Get(entityID).children.empty();
+}
+
+const std::vector<Entity>& Scene::GetChildren(Entity entityID) const
+{
+    static std::vector<Entity> empty;
+
+    if (!registry.hierarchies.Has(entityID))
+        return empty;
+
+    return registry.hierarchies.Get(entityID).children;
+}
+
+void Scene::SetParent(Entity child, Entity parent)
+{
+    if (!registry.hierarchies.Has(child))
+        registry.hierarchies.Add(child);
+
+    if (!registry.hierarchies.Has(parent))
+        registry.hierarchies.Add(parent);
+
+    auto& childH = registry.hierarchies.Get(child);
+
+    if (childH.parent != NullEntity)
+    {
+        auto& oldParentH = registry.hierarchies.Get(childH.parent);
+        std20::erase(oldParentH.children, child);
+    }
+    else
+    {
+        std20::erase(rootEntities, child);
+    }
+
+    childH.parent = parent;
+    registry.hierarchies.Get(parent).children.push_back(child);
+
+    if (registry.transforms.Has(child))
+    {
+        auto& t = registry.transforms.Get(child);
+        t.worldDirty = true;
+    }
+}
+
+void Scene::MakeOrphan(Entity child)
+{
+    if (!registry.hierarchies.Has(child))
+        return;
+
+    auto& h = registry.hierarchies.Get(child);
+
+    if (h.parent != NullEntity)
+    {
+        auto& parentH = registry.hierarchies.Get(h.parent);
+        std20::erase(parentH.children, child);
+    }
+
+    h.parent = NullEntity;
+    rootEntities.push_back(child);
+
+    if (registry.transforms.Has(child))
+        registry.transforms.Get(child).localDirty = true;
+}
+
+std::string Scene::GenerateDuplicateName(Scene* scene, const std::string& baseName)
+{
+    int counter = 1;
+    std::string newName;
+
+    while (true)
+    {
+        newName = baseName + "_" + std::to_string(counter);
+
+        bool exists = false;
+
+        for (auto& e : scene->getEntities())
+        {
+            if (!scene->GetRegistry().nameTags.Has(*e))
+                continue;
+
+            auto& tag = scene->GetRegistry().nameTags.Get(*e);
+
+            if (tag.name == newName)
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+            return newName;
+
+        counter++;
+    }
+}
+
+std::unique_ptr<Scene> Scene::Clone()
+{
+    auto newScene = std::make_unique<Scene>(name + "_runtime", UUID());
+
+    std::unordered_map<Entity, Entity> entityMap;
+
+    for (const auto& e : entities)
+    {
+        Entity newID = nextEntityID++;
+
+        entityMap[*e] = newID;
+
+        newScene->entities.push_back(
+            std::make_unique<Entity>(newID)
         );
-
-        // 4Remove components
-        if (transforms.Has(id))     transforms.Remove(id);
-        if (meshFilters.Has(id))    meshFilters.Remove(id);
-        if (meshRenderers.Has(id))  meshRenderers.Remove(id);
-        if (lights.Has(id))         lights.Remove(id);
-        if (nameTags.Has(id))       nameTags.Remove(id);
-        if (animations.Has(id))     animations.Remove(id);
-        if (cameras.Has(id))     cameras.Remove(id);
-
-
     }
 
-    void Scene::RemoveEntityRecursive(Entity id)
+    for (Entity root : rootEntities)
     {
-        if (hierarchys.Has(id))
+        newScene->rootEntities.push_back(
+            entityMap[root]
+        );
+    }
+
+    Registry& newReg = newScene->GetRegistry();
+    const Registry& thisReg = registry;
+
+    newReg.hierarchies.Clear();
+
+    const auto& hierDense = thisReg.hierarchies.GetDense();
+    const auto& hierEntities = thisReg.hierarchies.GetEntities();
+
+    for (size_t i = 0; i < hierDense.size(); ++i)
+    {
+        const HierarchyComponent& oldComp = hierDense[i];
+        const Entity               oldEntity = hierEntities[i];
+
+        auto entityIt = entityMap.find(oldEntity);
+        if (entityIt == entityMap.end())
+            continue;
+
+        Entity newEntity = entityIt->second;
+        HierarchyComponent newComp;
+
+        if (oldComp.parent != NullEntity)
         {
-            auto children = hierarchys.Get(id).children;
-            for (Entity child : children)
-                RemoveEntityRecursive(child);
-        }
-
-        RemoveEntity(id);
-    }
-
-
-
-    const Entity* Scene::getEntityByID(const Entity& id) const {
-        for (auto& entity : entities) {
-            if (*entity == id) {
-                return entity.get();
-            }
-        }
-        return nullptr;
-    }
-    Entity* Scene::getEntityByID(const Entity& id) {
-        if (id == NullEntity)
-            return nullptr;
-
-        for (auto& entity : entities) {
-            if (*entity == id) {
-                return entity.get();
-            }
-        }
-        return nullptr;
-    }
-
-
- 
-    bool Scene::HasChildren(Entity entityID) const
-    {
-        if (!hierarchys.Has(entityID))
-            return false;
-
-        return !hierarchys.Get(entityID).children.empty();
-    }
-
-    const std::vector<Entity>& Scene::GetChildren(Entity entityID) const
-    {
-        static std::vector<Entity> empty;
-
-        if (!hierarchys.Has(entityID))
-            return empty;
-
-        return hierarchys.Get(entityID).children;
-    }
-
-    void Scene::SetParent(Entity child, Entity parent)
-    {
-        if (!hierarchys.Has(child))
-            hierarchys.Add(child);
-
-        if (!hierarchys.Has(parent))
-            hierarchys.Add(parent);
-
-        auto& childH = hierarchys.Get(child);
-
-        // Remove from old parent / roots
-        if (childH.parent != NullEntity)
-        {
-            auto& oldParentH = hierarchys.Get(childH.parent);
-            std20::erase(oldParentH.children, child);
+            auto parentIt = entityMap.find(oldComp.parent);
+            newComp.parent = (parentIt != entityMap.end()) ? parentIt->second : NullEntity;
         }
         else
         {
-            std20::erase(rootEntities, child);
+            newComp.parent = NullEntity;
         }
 
-        // Attach
-        childH.parent = parent;
-        hierarchys.Get(parent).children.push_back(child);
+        newComp.children.reserve(oldComp.children.size());
 
-        // ---- Correct dirtiness ----
-        if (transforms.Has(child))
+        for (const Entity& oldChild : oldComp.children)
         {
-            auto& t = transforms.Get(child);
-            t.worldDirty = true;   // parent space changed
+            auto childIt = entityMap.find(oldChild);
+            if (childIt != entityMap.end())
+                newComp.children.push_back(childIt->second);
         }
+
+        newReg.hierarchies.Add(newEntity, std::move(newComp));
     }
 
+    newReg.transforms.CloneFrom(thisReg.transforms, entityMap);
+    newReg.meshFilters.CloneFrom(thisReg.meshFilters, entityMap);
+    newReg.meshRenderers.CloneFrom(thisReg.meshRenderers, entityMap);
+    newReg.skeletons.CloneFrom(thisReg.skeletons, entityMap);
+    newReg.animations.CloneFrom(thisReg.animations, entityMap);
+    newReg.cameras.CloneFrom(thisReg.cameras, entityMap);
+    newReg.rigidBodies.CloneFrom(thisReg.rigidBodies, entityMap);
+    newReg.colliders.CloneFrom(thisReg.colliders, entityMap);
+    newReg.hierarchies.CloneFrom(thisReg.hierarchies, entityMap);
+    newReg.lights.CloneFrom(thisReg.lights, entityMap);
 
-    void Scene::MakeOrphan(Entity child)
+    Entity oldPrimary = primaryCamera;
+    if (oldPrimary != NullEntity)
     {
-        if (!hierarchys.Has(child))
-            return;
-
-        auto& h = hierarchys.Get(child);
-
-        if (h.parent != NullEntity)
-        {
-            auto& parentH = hierarchys.Get(h.parent);
-            std20::erase(parentH.children, child);
-        }
-
-        h.parent = NullEntity;
-        rootEntities.push_back(child);
-
-        if (transforms.Has(child))
-            transforms.Get(child).localDirty = true;
+        auto it = entityMap.find(oldPrimary);
+        if (it != entityMap.end())
+            newScene->SetPrimaryCamera(it->second);
     }
 
-    std::string Scene::GenerateDuplicateName(Scene* scene, const std::string& baseName)
-    {
-        int counter = 1;
-        std::string newName;
-
-        while (true)
-        {
-            newName = baseName + "_" + std::to_string(counter);
-
-            bool exists = false;
-
-            for (auto& e : scene->getEntities())
-            {
-                if (!scene->NameTags().Has(*e))
-                    continue;
-
-                auto& tag = scene->NameTags().Get(*e);
-
-                if (tag.name == newName)
-                {
-                    exists = true;
-                    break;
-                }
-            }
-
-            if (!exists)
-                return newName;
-
-            counter++;
-        }
-    }
-    std::unique_ptr<Scene> Scene::Clone()
-    {
-        auto newScene = std::make_unique<Scene>(name + "_runtime", UUID());
-
-        std::unordered_map<Entity, Entity> entityMap;
-
-        // Entities 
-        for (const auto& e : entities)
-        {
-            Entity newID = nextEntityID++;
-
-            entityMap[*e] = newID;
-
-            newScene->entities.push_back(
-                std::make_unique<Entity>(newID)
-            );
-        }
-
-        // Roots
-        for (Entity root : rootEntities)
-        {
-            newScene->rootEntities.push_back(
-                entityMap[root]
-            );
-        }
-
-        // Rebuild Hierarchies
-        newScene->hierarchys.Clear();
-
-        for (const auto& [oldEntity, oldComp] : hierarchys.All())
-        {
-            auto entityIt = entityMap.find(oldEntity);
-            if (entityIt == entityMap.end())
-                continue;
-
-            Entity newEntity = entityIt->second;
-            HierarchyComponent newComp;
-
-            if (oldComp.parent != NullEntity)
-            {
-                auto parentIt = entityMap.find(oldComp.parent);
-
-                if (parentIt != entityMap.end())
-                    newComp.parent = parentIt->second;
-                else
-                    newComp.parent = NullEntity;
-            }
-            else
-            {
-                newComp.parent = NullEntity;
-            }
-
-            newComp.children.reserve(oldComp.children.size());
-
-            for (const Entity& oldChild : oldComp.children)
-            {
-                auto childIt = entityMap.find(oldChild);
-
-                if (childIt != entityMap.end())
-                {
-                    newComp.children.push_back(childIt->second);
-                }
-            }
-            newScene->hierarchys.Add(newEntity, std::move(newComp));
-        }
-
-
-        // Components
-        newScene->transforms.CloneFrom(transforms, entityMap);
-        newScene->meshFilters.CloneFrom(meshFilters, entityMap);
-        newScene->meshRenderers.CloneFrom(meshRenderers, entityMap);
-        newScene->skeletons.CloneFrom(skeletons, entityMap);
-        newScene->animations.CloneFrom(animations, entityMap);
-        newScene->cameras.CloneFrom(cameras, entityMap);
-        newScene->rigidbodies.CloneFrom(rigidbodies, entityMap);
-        newScene->colliders.CloneFrom(colliders, entityMap);
-        newScene->hierarchys.CloneFrom(hierarchys, entityMap);
-        newScene->lights.CloneFrom(lights, entityMap);
-
-        // Copy Primary camera
-        Entity oldPrimary = primaryCamera;
-        
-        if (oldPrimary != NullEntity)
-        {
-            auto it = entityMap.find(oldPrimary);
-            if (it != entityMap.end())
-            {
-                newScene->SetPrimaryCamera(it->second);
-            }
-        }
-
-        // Copy Shadow Casters
-        Entity oldDirectionalShadowCaster = directionalShadowCaster;
-        if (oldDirectionalShadowCaster != NullEntity) {
-
-            auto it = entityMap.find(oldDirectionalShadowCaster);
-            if (it != entityMap.end())
-            {
-                newScene->SetDirectionalShadowCaster(it->second);
-            }
-        }
-
-        Entity oldPointShadowCaster = pointShadowCaster;
-        if (oldPointShadowCaster != NullEntity) {
-
-            auto it = entityMap.find(oldPointShadowCaster);
-            if (it != entityMap.end())
-            {
-                newScene->SetPointShadowCaster(it->second);
-            }
-        }
-        
-        return newScene;
+    Entity oldDirectionalShadowCaster = directionalShadowCaster;
+    if (oldDirectionalShadowCaster != NullEntity) {
+        auto it = entityMap.find(oldDirectionalShadowCaster);
+        if (it != entityMap.end())
+            newScene->SetDirectionalShadowCaster(it->second);
     }
 
+    Entity oldPointShadowCaster = pointShadowCaster;
+    if (oldPointShadowCaster != NullEntity) {
+        auto it = entityMap.find(oldPointShadowCaster);
+        if (it != entityMap.end())
+            newScene->SetPointShadowCaster(it->second);
+    }
 
-
+    return newScene;
+}
