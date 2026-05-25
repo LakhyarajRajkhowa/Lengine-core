@@ -152,7 +152,7 @@ void ForwardRenderer::RenderScene_pbr(const RenderContext& ctx)
     const Scene* activeScene = ctx.scene;
     const Registry& registry = activeScene->GetRegistry();
 
-    GLSLProgram* pbrShader = assetManager.getShader(ShaderRegistry::UNIVERSAL_PBR);
+    auto pbrShader = assetManager.getShader(ShaderRegistry::UNIVERSAL_PBR);
     pbrShader->use();
 
     pbrShader->setInt("irradianceMap", static_cast<unsigned int>(TextureUnit::Irradiance));

@@ -61,7 +61,7 @@ void main()
         skinMatrix * vec4(aPos, 1.0);
 
     mat3 normalMatrix =
-        transpose(inverse(mat3(skinMatrix)));
+        mat3(skinMatrix);
 
     vec3 skinnedNormal =
         normalMatrix * aNormal;

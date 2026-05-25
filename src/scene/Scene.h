@@ -77,7 +77,7 @@ namespace Lengine {
             return directionalShadowCaster;
         }
 
-        void Scene::SetDirectionalShadowCaster(Entity entity)
+        void SetDirectionalShadowCaster(Entity entity)
         {
             // Clear old one
             if (directionalShadowCaster != UUID::Null &&
@@ -100,7 +100,7 @@ namespace Lengine {
             return pointShadowCaster;
         }
 
-        void Scene::SetPointShadowCaster(Entity entity)
+        void SetPointShadowCaster(Entity entity)
         {
             if (pointShadowCaster != NullEntity &&
                 registry.lights.Has(pointShadowCaster))

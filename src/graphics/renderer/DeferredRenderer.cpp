@@ -125,7 +125,7 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
 {
     const Registry& registry = ctx.scene->GetRegistry();
 
-    GLSLProgram* geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
+    auto geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
     geomShader->use();
 
     geomShader->setMat4("view", ctx.cameraView);
@@ -168,7 +168,6 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
             {
                 for (int b = 0; b < (int)mesh->bonePalette.size(); ++b)
                 {
-                    DEBUG_LOG_GAP("Applying final bone matrices", 1000);
 
                     int globalID = mesh->bonePalette[b];
                     geomShader->setMat4(
@@ -233,7 +232,7 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     const Scene* activeScene = ctx.scene;
     const Registry& registry = activeScene->GetRegistry();
 
-    GLSLProgram* shader = assetManager.getShader(ShaderRegistry::DEFERRED_PBR);
+    auto shader = assetManager.getShader(ShaderRegistry::DEFERRED_PBR);
     shader->use();
 
     shader->setInt("gPosition", 0);

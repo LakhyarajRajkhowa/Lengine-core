@@ -17,6 +17,7 @@ namespace Lengine {
 
     GLSLProgram::~GLSLProgram()
     {
+        glDeleteProgram(_programID);
     }
 
     void GLSLProgram::compileShaders(const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath)
@@ -99,15 +100,15 @@ namespace Lengine {
         glDeleteShader(_fragmentShaderID);
     }
 
-    void GLSLProgram::addAtrribute(const std::string& attributeName)
+    void GLSLProgram::addAttribute(const std::string& attributeName)
     {
 
         glBindAttribLocation(_programID, _numAttributes++, attributeName.c_str());
     }
 
-    GLint GLSLProgram::getUnifromLocation(const std::string& uniformName) {
+    GLint GLSLProgram::getUniformLocation(const std::string& uniformName) {
         GLuint location = glGetUniformLocation(_programID, uniformName.c_str());
-        if (location == GL_INVALID_INDEX) {
+        if (location == -1) {
             fatalError("Unifrom " + uniformName + " not found in shader!");
         }
 
@@ -195,16 +196,21 @@ namespace Lengine {
     }
     void GLSLProgram::setFloat(const std::string& name, float value) {
         GLint location = glGetUniformLocation(_programID, name.c_str());
-        
+        if (location == -1) return;
+
         glUniform1f(location, value);
     }
     void GLSLProgram::setInt(const std::string& name, int value) {
         GLint location = glGetUniformLocation(_programID, name.c_str());
+        if (location == -1) return;
+
         glUniform1i(location, value);
         
     }
     void GLSLProgram::setBool(const std::string& name, bool state) {
         GLint location = glGetUniformLocation(_programID, name.c_str());
+        if (location == -1) return;
+
         glUniform1i(location, state);
 
     }

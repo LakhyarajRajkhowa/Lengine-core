@@ -108,9 +108,6 @@ namespace Lengine {
         );
 
 
-        GLSLProgram* defaultShader;
-        GLSLProgram* lightSourceShader;
-
 
     };
 }

@@ -17,6 +17,9 @@ namespace Lengine {
         GLSLProgram();
         ~GLSLProgram();
 
+        GLSLProgram(const GLSLProgram&) = delete;
+        GLSLProgram& operator=(const GLSLProgram&) = delete;
+
         void compileShaders(const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath);
         void compileShaders_3(
             const std::string& vertexShaderFilePath,
@@ -25,9 +28,9 @@ namespace Lengine {
            );
 
         void linkShaders();
-        void addAtrribute(const std::string& attributeName);
+        void addAttribute(const std::string& attributeName);
 
-        GLint getUnifromLocation(const std::string& uniformName);
+        GLint getUniformLocation(const std::string& uniformName);
 
         void use();
         void unuse();

@@ -95,6 +95,11 @@ namespace Lengine
                 glm::mat4(1.0f));
         }
 
+        ComputeBoneTransforms(
+            *skeleton,
+            *animation,
+            time,
+            anim.finalBoneMatrices);
     }
 
     void AnimationSystem::ComputeBoneTransforms(
@@ -118,7 +123,7 @@ namespace Lengine
 
                 glm::vec3 pos = InterpolatePosition(track, time, 1);
                 glm::quat rot = InterpolateRotation(track, time, 1);
-                //glm::vec3 scale = InterpolateScale(track, time, 1);
+             //   glm::vec3 scale = InterpolateScale(track, time, 1);
 
                 localTransform = glm::translate(localTransform, pos);
                 localTransform *= glm::toMat4(rot);

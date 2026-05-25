@@ -842,10 +842,15 @@ GLSLProgram* AssetManager::loadShader(const std::string& name,
     return shaders[name].get();
 }
 
-GLSLProgram* AssetManager::getShader(const std::string& name) {
-    return shaders[name].get();
-}
+std::shared_ptr<GLSLProgram> AssetManager::getShader(const std::string& name)
+{
+    auto it = shaders.find(name);
 
+    if (it == shaders.end())
+        return nullptr;
+
+    return it->second;
+}
 
 //          ----- ASSET REGISTRY -----
 

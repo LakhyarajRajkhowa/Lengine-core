@@ -154,7 +154,8 @@ namespace Lengine {
 		GLSLProgram* loadShader(const std::string& name,
 			const std::string& vertPath,
 			const std::string& fragPath);
-		GLSLProgram* getShader(const std::string& name);
+		std::shared_ptr<GLSLProgram> getShader(const std::string& name);
+			;
 
 
 		// ASSET REGSISTRY

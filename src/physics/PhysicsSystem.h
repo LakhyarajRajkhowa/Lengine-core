@@ -49,13 +49,13 @@ namespace Lengine {
         PxScene* getScene() { return scene; }
         PxMaterial* getDefaultMaterial() { return material; }
 
-        void PhysicsSystem::RemoveActor_collider(
+        void RemoveActor_collider(
             const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders,
             ComponentStorage<RigidbodyComponent>& rigidbodies
         );
 
-        void PhysicsSystem::RemoveActor_rigidbody(
+        void RemoveActor_rigidbody(
             const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders,
             ComponentStorage<RigidbodyComponent>& rigidbodies
@@ -72,18 +72,18 @@ namespace Lengine {
             RigidbodyComponent& rb
         );
 
-        void PhysicsSystem::DeleteColliderShape(
+        void DeleteColliderShape(
             const Entity& entity,
             ColliderComponent& collider,
             size_t shapeIndex
         );
 
-        void PhysicsSystem::DeleteCollider(
+        void DeleteCollider(
             const Entity& entity,
             ColliderComponent& collider
         );
 
-        void PhysicsSystem::DeleteRigidBody(
+        void DeleteRigidBody(
             const Entity& entity,
             ComponentStorage<ColliderComponent>& colliders
             );
