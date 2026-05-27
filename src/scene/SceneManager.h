@@ -2,6 +2,7 @@
 
 #include "../scene/Scene.h"
 #include "../resources/AssetManager.h"
+#include "physics/PhysicsSystem.h"
 
 namespace Lengine {
 
@@ -14,11 +15,12 @@ namespace Lengine {
         std::unique_ptr<Scene> runtimeScene = nullptr;
 
         AssetManager& assetManager;
+        PhysicsSystem& physics;
 
     public:
 
-        SceneManager(AssetManager& asstMgr)
-            : assetManager(asstMgr) {}
+        SceneManager(AssetManager& asstMgr, PhysicsSystem& physics)
+            : assetManager(asstMgr), physics(physics) {}
 
         Scene* GetActiveScene(EditorMode mode)
         {
@@ -40,6 +42,8 @@ namespace Lengine {
         void CreateRuntimeScene()
         {
             runtimeScene = activeScene->Clone();
+            physics.InitForRuntime(*runtimeScene);
+
         }
 
         void setActiveScene(Scene* scene) {

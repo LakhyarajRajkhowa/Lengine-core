@@ -14,6 +14,8 @@ namespace Lengine {
 		for (auto& it : _mouseButtonMap)
 			_previousMouseButtonMap[it.first] = it.second;
 
+		updateMouseCoords();
+
 	}
 
 	void InputManager::pressButton(unsigned int keyID) {
@@ -29,11 +31,17 @@ namespace Lengine {
 		_keyMap[keyID] = false;
 	}
 
-	void InputManager::updateMouseCoords() {
+	void InputManager::updateMouseCoords()
+	{
+		_previousMouseCoords = _mouseCoords;
+
 		int mouseX, mouseY;
 		SDL_GetMouseState(&mouseX, &mouseY);
-		_mouseCoords.x = (float)mouseX;
-		_mouseCoords.y = (float)mouseY;
+
+		_mouseCoords.x = static_cast<float>(mouseX);
+		_mouseCoords.y = static_cast<float>(mouseY);
+
+		_mouseDelta = _mouseCoords - _previousMouseCoords;
 	}
 
 	bool InputManager::isMouseButtonDown(unsigned int buttonID) {

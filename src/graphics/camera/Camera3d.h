@@ -4,7 +4,7 @@
 #include <external/glm/gtc/type_ptr.hpp>
 #include <external/SDL2/SDL.h>
 
-#include "../platform/InputManager.h"
+#include "input/InputManager.h"
 
 namespace Lengine {
     enum class CameraControlMode {
@@ -40,15 +40,19 @@ namespace Lengine {
 
          glm::vec3 getRightVector();
          glm::vec3 getForwardVector();
-        void Update(const float& deltaTime, const glm::vec2& mouseCoords);
-        void moveMouse( float xoffset,  float yoffset, float speed);
-        void controlMovement(const float& speed);
+
 
         bool isFixed = true;
 
         glm::vec3 getForward() const;
         glm::vec3 getRight() const;
         glm::vec3 getUp() const;
+
+        void move(const glm::vec3& offset);
+        void rotate(float yawOffset, float pitchOffset);
+        void zoom(float amount);
+
+        void updateViewMatrix();
 
         CameraControlMode controlMode = CameraControlMode::first;
 

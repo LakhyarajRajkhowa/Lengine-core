@@ -55,6 +55,52 @@ void PhysicsSystem::Init() {
 
 
 }
+void PhysicsSystem::InitForRuntime(Scene& scene)
+{
+    // Clear all editor actors from PhysX scene and the map
+    for (auto& [entity, actor] : actors)
+        if (actor->actor)
+            this->scene->removeActor(*actor->actor);
+    actors.clear();
+
+    Registry& reg = scene.GetRegistry();
+    auto& colEntities = reg.colliders.GetEntities();
+    auto& colDense = reg.colliders.GetDense();
+
+    for (size_t i = 0; i < colDense.size(); ++i)
+    {
+        Entity entity = colEntities[i];
+        ColliderComponent& col = colDense[i];  // mutable ref — we'll fill runtimeShape
+
+        for (auto& shape : col.shapes)
+            AddCollider(entity, col, shape.type); // creates PxActor + PxShape fresh
+    }
+
+    auto& rbEntities = reg.rigidBodies.GetEntities();
+    auto& rbDense = reg.rigidBodies.GetDense();
+
+    for (size_t i = 0; i < rbDense.size(); ++i)
+    {
+        Entity entity = rbEntities[i];
+        RigidbodyComponent& rb = const_cast<RigidbodyComponent&>(rbDense[i]);
+        AddRigidbody(entity, rb);
+    }
+
+    // Sync initial positions from scene transforms into PhysX
+    SyncTransformsToPhysX(reg.transforms);
+}
+
+void PhysicsSystem::SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms)
+{
+    for (auto& [entity, physActor] : actors)
+    {
+        if (!transforms.Has(entity)) continue;
+        auto& t = transforms.Get(entity);
+        glm::vec3 pos = t.GetWorldPosition();
+        PxTransform pose(PxVec3(pos.x, pos.y, pos.z));
+        physActor->actor->setGlobalPose(pose);
+    }
+}
 
 void PhysicsSystem::update(
     float dt,
@@ -80,7 +126,7 @@ void PhysicsSystem::UpdateTransforms(ComponentStorage<TransformComponent>& trans
 
         auto& transform = transforms.Get(entity);
 
-
+        
 
         if (physicsActor->type == PhysicsActor::Type::STATIC) {
             PxTransform pose(PxVec3(

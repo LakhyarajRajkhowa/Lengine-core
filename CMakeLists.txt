@@ -4,6 +4,7 @@ project(Lengine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 # ────────────────────────────────────────────────
 # Output dirs
 # ────────────────────────────────────────────────
@@ -44,6 +45,8 @@ file(GLOB_RECURSE LOGGING_SRC "src/logging/*.cpp" "src/logging/*.h")
 file(GLOB_RECURSE RESOURCES_SRC "src/resources/*.cpp" "src/resources/*.h")
 file(GLOB_RECURSE SCENE_SRC "src/scene/*.cpp" "src/scene/*.h")
 file(GLOB_RECURSE UTILS_SRC "src/utils/*.cpp" "src/utils/*.h")
+file(GLOB_RECURSE INPUT_SRC "src/input/*.cpp" "src/input/*.h")
+
 
 file(GLOB_RECURSE EXTERNAL_SRC
     "src/external/picopng.cpp"
@@ -69,6 +72,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "" FILES
     ${SCENE_SRC}
     ${UTILS_SRC}
     ${EXTERNAL_SRC}
+    ${INPUT_SRC}
 )
 
 # ────────────────────────────────────────────────
@@ -88,6 +92,8 @@ add_library(${PROJECT_NAME} STATIC
     ${SCENE_SRC}
     ${UTILS_SRC}
     ${EXTERNAL_SRC}
+    ${INPUT_SRC}
+
 )
 
 # ────────────────────────────────────────────────

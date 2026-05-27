@@ -174,6 +174,7 @@ bool AssetManager::LoadAnimation(const UUID& uuid) {
 
 Animation* AssetManager::GetAnimation(const UUID& id) {
     auto it = animations.find(id);
+
     if (it == animations.end())
         return nullptr;
 

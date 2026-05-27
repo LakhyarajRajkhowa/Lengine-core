@@ -20,17 +20,23 @@ namespace Lengine
         auto& dense = animComponents.GetDense();
         auto& entities = animComponents.GetEntities();
 
+
+
         for (size_t i = 0; i < dense.size(); ++i)
         {
 
             AnimationComponent& anim = dense[i];
             const Entity entity = entities[i];
 
+          
+
             if (anim.currentAnimationID == UUID::Null)
                 continue;
 
+
             Animation* animation =
                 assetManager.GetAnimation(anim.currentAnimationID);
+
 
             if (!animation)
                 continue;
@@ -66,27 +72,33 @@ namespace Lengine
         float time)
     {
 
-        if (!skeletons.Has(entity))
+
+        if (!skeletons.Has(entity)) {
             return;
+        }
+
 
         auto& sk = skeletons.Get(entity);
 
-        if (sk.skeletonID == UUID::Null)
-            return;
+
+        if (sk.skeletonID == UUID::Null) {
+            return;       
+        }
 
         Skeleton* skeleton =
             assetManager.GetSkeleton(sk.skeletonID);
 
-        if (!skeleton)
+        if (!skeleton) {
             return;
+        }
 
         Animation* animation =
             assetManager.GetAnimation(anim.currentAnimationID);
 
+
         if (!animation)
             return;
 
-        DEBUG_LOG_GAP("Applying Animation", 1000);
 
         if (anim.finalBoneMatrices.size() != skeleton->bones.size())
         {
@@ -94,6 +106,8 @@ namespace Lengine
                 skeleton->bones.size(),
                 glm::mat4(1.0f));
         }
+
+
 
         ComputeBoneTransforms(
             *skeleton,
@@ -123,7 +137,7 @@ namespace Lengine
 
                 glm::vec3 pos = InterpolatePosition(track, time, 1);
                 glm::quat rot = InterpolateRotation(track, time, 1);
-             //   glm::vec3 scale = InterpolateScale(track, time, 1);
+             // glm::vec3 scale = InterpolateScale(track, time, 1);
 
                 localTransform = glm::translate(localTransform, pos);
                 localTransform *= glm::toMat4(rot);

@@ -7,12 +7,16 @@
 #include "core/EventSystem.h"
 
 #include "graphics/renderer/RenderPipeline.h"
-#include "platform/InputManager.h"
 #include "platform/Window.h"
 
 #include "animations/AnimationSystem.h"
 #include "transform/TransformSystem.h"
 #include "physics/PhysicsSystem.h"
+
+#include "input/InputManager.h"
+#include "input/InputContext.h"
+#include "input/GameEvent.h"
+#include "input/InputRouter.h"
 
 #include "utils/fps.h"
 
@@ -36,18 +40,22 @@ namespace Lengine {
 
         void pollEvents();
 
+        void enterPlayMode();
+        void exitPlayMode();
+
+
         bool& isRunning();
 
         Window& getWindow();
         InputManager& getInputManager();
-        EventSystem& getEventSystem();
         AssetManager& getAssetManager();
         SceneManager& getSceneManager();
         RenderPipeline& getRenderPipeline();
         RenderSettings& getRenderSettings();
         RuntimeStats& getRuntimeStats();
-
         PhysicsSystem& getPhysicsSystem();
+        InputRouter& getInputRouter() { return inputRouter; }
+        GameEventSystem& getGameEventSystem() { return gameEventSystem; }
 
     private:
 
@@ -65,7 +73,6 @@ namespace Lengine {
 
         Window window;
         InputManager inputManager;
-        EventSystem eventSystem;
         AssetManager assetManager;
         SceneManager sceneManager;
         RenderPipeline renderPipeline;
@@ -73,6 +80,9 @@ namespace Lengine {
         AnimationSystem animationSystem;
         TransformSystem transformSystem;
         PhysicsSystem physicsSystem;
+
+        GameEventSystem gameEventSystem;  
+        InputRouter     inputRouter;      
 
         bool running = true;
 

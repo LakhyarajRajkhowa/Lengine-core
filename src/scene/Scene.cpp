@@ -428,7 +428,6 @@ std::unique_ptr<Scene> Scene::Clone()
     newReg.cameras.CloneFrom(thisReg.cameras, entityMap);
     newReg.rigidBodies.CloneFrom(thisReg.rigidBodies, entityMap);
     newReg.colliders.CloneFrom(thisReg.colliders, entityMap);
-    newReg.hierarchies.CloneFrom(thisReg.hierarchies, entityMap);
     newReg.lights.CloneFrom(thisReg.lights, entityMap);
 
     Entity oldPrimary = primaryCamera;
@@ -453,5 +452,25 @@ std::unique_ptr<Scene> Scene::Clone()
             newScene->SetPointShadowCaster(it->second);
     }
 
+    // Very IMPORTANT !!! : remap mf.rootparent
+    for (auto& mf : newReg.meshFilters.GetDense())
+    {
+        if (mf.rootParent != NullEntity)
+        {
+            auto it = entityMap.find(mf.rootParent);
+            mf.rootParent = (it != entityMap.end()) ? it->second : NullEntity;
+        }
+    }
+
+    // 
+    for (auto& col : newReg.colliders.GetDense()) {
+        for (auto& shape : col.shapes)
+        {
+            shape.runtimeShape = nullptr; // was pointing to editor's PxShape
+            shape.dirty = true;           // force re-creation
+        }
+    }
+      
+    
     return newScene;
 }

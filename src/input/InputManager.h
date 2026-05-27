@@ -37,6 +37,7 @@ namespace Lengine {
 		int getScrollY() const { return scrollY; }
 
 		glm::vec2 getMouseCoords() const { return _mouseCoords; }
+		glm::vec2 getMouseDelta() const { return _mouseDelta; }
 
 
 	private:
@@ -49,6 +50,9 @@ namespace Lengine {
 		std::unordered_map<unsigned int, bool> _previousMouseButtonMap;
 
 		glm::vec2 _mouseCoords;
+		glm::vec2 _previousMouseCoords;
+		glm::vec2 _mouseDelta;
+
 		int scrollX = 0;
 		int scrollY = 0;
 

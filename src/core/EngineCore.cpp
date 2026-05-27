@@ -11,10 +11,11 @@ namespace Lengine {
             settings.windowMode
         ),
 
-        sceneManager(assetManager),
+        sceneManager(assetManager, physicsSystem),
         assetManager(settings),
         renderPipeline(assetManager),
-        animationSystem(assetManager)
+        animationSystem(assetManager),
+        inputRouter(inputManager, gameEventSystem)
 
     {
     }
@@ -36,9 +37,9 @@ namespace Lengine {
         renderPipeline.Init();
 
         physicsSystem.Init();
+
     }
 
-    // TODO : Fix Editor and Runtime Scene 
     void EngineCore::updateEssentials(const EditorMode& mode)
     {
         Scene* activeScene = sceneManager.GetActiveScene(mode);
@@ -46,10 +47,12 @@ namespace Lengine {
 
 
         inputManager.Update();
+        inputRouter.update(deltaTime);
+
         assetManager.Update(*editorScene);
         UpdateTimer();
 
-        transformSystem.Update(editorScene->GetRegistry().transforms, editorScene->GetRegistry().hierarchies, editorScene->GetRootEntities());
+        transformSystem.Update(activeScene->GetRegistry().transforms, activeScene->GetRegistry().hierarchies, activeScene->GetRootEntities());
 
     }
 
@@ -68,14 +71,61 @@ namespace Lengine {
 
         while (SDL_PollEvent(&event))
         {
-            eventSystem.dispatch(event);
+
+            inputManager.processEvent(event);
+            inputRouter.routeEvent(event);
+
+            if (event.type == SDL_QUIT)
+                running = false;
         }
     }
+
+    void EngineCore::enterPlayMode()
+    {
+        sceneManager.CreateRuntimeScene();
+
+        // Lock cursor 
+        SDL_SetRelativeMouseMode(SDL_TRUE);
+
+        // Route all keyboard/mouse to the game handler
+        inputRouter.setContext(InputContext::Game);
+
+        // Notify game event subscribers
+        gameEventSystem.dispatch(GameEventType::PlayModeEntered);
+    }
+
+    void EngineCore::exitPlayMode()
+    {
+        // Restore cursor
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+
+        // Return input focus to the editor UI
+        inputRouter.setContext(InputContext::UI);
+
+        // Notify game event subscribers (allows cleanup of game-side state)
+        gameEventSystem.dispatch(GameEventType::PlayModeExited);
+
+        // Optionally clear game-only subscriptions so stale lambdas don't fire
+        // Leave PlayModeEntered/Exited listeners alive for editor's use
+        gameEventSystem.clearType(GameEventType::MoveAxis);
+        gameEventSystem.clearType(GameEventType::LookAxis);
+        gameEventSystem.clearType(GameEventType::Jump);
+        gameEventSystem.clearType(GameEventType::Sprint);
+        gameEventSystem.clearType(GameEventType::Interact);
+        gameEventSystem.clearType(GameEventType::Attack);
+        gameEventSystem.clearType(GameEventType::Pause);
+    }
+
 
     void EngineCore::run(const EditorMode mode)
     {
         updateEssentials(mode);
-        updateRuntime(mode);
+
+        if(mode == EditorMode::PLAY)
+            updateRuntime(mode);
+        
+
+
         pollEvents();
 
     }
@@ -114,10 +164,6 @@ namespace Lengine {
         return inputManager;
     }
 
-    EventSystem& EngineCore::getEventSystem()
-    {
-        return eventSystem;
-    }
 
     AssetManager& EngineCore::getAssetManager()
     {

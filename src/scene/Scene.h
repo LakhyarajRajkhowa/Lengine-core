@@ -8,7 +8,6 @@
 #include "assets/MaterialRegistry.h"
 
 #include "transform/TransformSystem.h"
-#include "physics/PhysicsSystem.h"
 namespace Lengine {
     class Scene {
     public:

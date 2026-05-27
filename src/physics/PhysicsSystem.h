@@ -4,9 +4,7 @@
 
 using namespace physx;
 
-
-#include "transform/TransformSystem.h"
-
+#include "scene/scene.h"
 
 
 namespace Lengine {
@@ -39,6 +37,9 @@ namespace Lengine {
         static PhysicsSystem& getInstance();
 
         void Init();
+        void InitForRuntime(Lengine::Scene& scene);
+        void SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms);
+
         void update(
             float dt,
             ComponentStorage<TransformComponent>& transforms

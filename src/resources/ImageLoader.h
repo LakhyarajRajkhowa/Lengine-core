@@ -1,10 +1,9 @@
 #pragma once
 #include <string>
 
-#include "../graphics/opengl/GLTexture.h"
-#include "../external/picopng.h"
-#include "../platform/IOManager.h"
-#include "../core/Errors.h"
+#include "graphics/opengl/GLTexture.h"
+#include "external/picopng.h"
+#include "core/Errors.h"
 
 #include "glm/glm.hpp"
 namespace Lengine {

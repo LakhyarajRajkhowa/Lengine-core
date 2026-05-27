@@ -157,15 +157,17 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
             mesh = assetManager.GetSubmesh(mf.meshID);
 
         geomShader->setBool("useSkeleton", false);
-
         if (registry.HasComponent<AnimationComponent>(mf.rootParent))
         {
+
             const AnimationComponent& anim = registry.GetComponent<AnimationComponent>(mf.rootParent);
+            
 
             if (mesh
                 && anim.currentAnimationID != UUID::Null
                 && !anim.finalBoneMatrices.empty())
             {
+
                 for (int b = 0; b < (int)mesh->bonePalette.size(); ++b)
                 {
 
@@ -177,7 +179,10 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
                 }
                 geomShader->setBool("useSkeleton", true);
             }
+     
         }
+        
+       
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
         if (!mat) continue;
