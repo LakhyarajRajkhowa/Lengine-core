@@ -69,7 +69,7 @@ namespace Lengine {
         float nearPlane, farPlane;
 
         glm::vec3 direction;
-        InputManager* _inputManager;
+        InputManager* inputManager;
 
 
         float speedFactor = 10.0f;

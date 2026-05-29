@@ -25,3 +25,22 @@ namespace EditorKeys
         Delete
     };
 }
+
+struct GameKeys
+{
+    // Movement
+    SDL_Keycode moveForward = SDLK_w;
+    SDL_Keycode moveBackward = SDLK_s;
+    SDL_Keycode moveLeft = SDLK_a;
+    SDL_Keycode moveRight = SDLK_d;
+
+    // Actions
+    SDL_Keycode jump = SDLK_SPACE;
+    SDL_Keycode interact = SDLK_e;
+    SDL_Keycode pause = SDLK_ESCAPE;
+    SDL_Keycode sprint = SDLK_LSHIFT;
+
+    // Mouse buttons
+    Uint8 attack = SDL_BUTTON_LEFT;
+};
+

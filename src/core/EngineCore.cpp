@@ -15,7 +15,9 @@ namespace Lengine {
         assetManager(settings),
         renderPipeline(assetManager),
         animationSystem(assetManager),
-        inputRouter(inputManager, gameEventSystem)
+        inputRouter(inputManager),
+        controllerSystem(sceneManager, inputManager),
+        movementSystem(sceneManager)
 
     {
     }
@@ -28,7 +30,7 @@ namespace Lengine {
         renderSettings.resolution_Y = settings.resolution_Y;
      
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("light_test");
+        scenesTobeLoaded.push_back("emptyScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 
@@ -52,7 +54,6 @@ namespace Lengine {
         assetManager.Update(*editorScene);
         UpdateTimer();
 
-        transformSystem.Update(activeScene->GetRegistry().transforms, activeScene->GetRegistry().hierarchies, activeScene->GetRootEntities());
 
     }
 
@@ -60,6 +61,10 @@ namespace Lengine {
     {
         Scene* runtimeScene = sceneManager.GetActiveScene(mode);
 
+        // !!! THIS FLOW MATTERS : controller -> movement -> physics -> animation -> transform
+
+        controllerSystem.Update(deltaTime);
+        movementSystem.Update(deltaTime);
         physicsSystem.update(deltaTime, runtimeScene->GetRegistry().transforms);
         animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
     }
@@ -90,8 +95,6 @@ namespace Lengine {
         // Route all keyboard/mouse to the game handler
         inputRouter.setContext(InputContext::Game);
 
-        // Notify game event subscribers
-        gameEventSystem.dispatch(GameEventType::PlayModeEntered);
     }
 
     void EngineCore::exitPlayMode()
@@ -102,31 +105,26 @@ namespace Lengine {
         // Return input focus to the editor UI
         inputRouter.setContext(InputContext::UI);
 
-        // Notify game event subscribers (allows cleanup of game-side state)
-        gameEventSystem.dispatch(GameEventType::PlayModeExited);
-
-        // Optionally clear game-only subscriptions so stale lambdas don't fire
-        // Leave PlayModeEntered/Exited listeners alive for editor's use
-        gameEventSystem.clearType(GameEventType::MoveAxis);
-        gameEventSystem.clearType(GameEventType::LookAxis);
-        gameEventSystem.clearType(GameEventType::Jump);
-        gameEventSystem.clearType(GameEventType::Sprint);
-        gameEventSystem.clearType(GameEventType::Interact);
-        gameEventSystem.clearType(GameEventType::Attack);
-        gameEventSystem.clearType(GameEventType::Pause);
     }
 
 
     void EngineCore::run(const EditorMode mode)
     {
+
+        Scene* activeScene = sceneManager.GetActiveScene(mode);
+
         updateEssentials(mode);
+
+        pollEvents();
 
         if(mode == EditorMode::PLAY)
             updateRuntime(mode);
+
+        transformSystem.Update(activeScene->GetRegistry().transforms, activeScene->GetRegistry().hierarchies, activeScene->GetRootEntities());
+
         
 
 
-        pollEvents();
 
     }
 

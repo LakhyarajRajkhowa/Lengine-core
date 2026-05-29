@@ -429,6 +429,8 @@ std::unique_ptr<Scene> Scene::Clone()
     newReg.rigidBodies.CloneFrom(thisReg.rigidBodies, entityMap);
     newReg.colliders.CloneFrom(thisReg.colliders, entityMap);
     newReg.lights.CloneFrom(thisReg.lights, entityMap);
+    newReg.controllers.CloneFrom(thisReg.controllers, entityMap);
+    newReg.movements.CloneFrom(thisReg.movements, entityMap);
 
     Entity oldPrimary = primaryCamera;
     if (oldPrimary != NullEntity)

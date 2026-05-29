@@ -33,7 +33,6 @@
 
 #include "InputManager.h"     
 #include "InputContext.h"
-#include "GameEventSystem.h"
 
 
 
@@ -52,9 +51,8 @@ namespace Lengine {
     {
     public:
 
-        explicit InputRouter(InputManager& inputManager, GameEventSystem& gameEvents)
+        explicit InputRouter(InputManager& inputManager)
             : m_input(inputManager)
-            , m_gameEvents(gameEvents)
         {}
 
 
@@ -104,11 +102,9 @@ namespace Lengine {
             }
         }
 
-        GameEventSystem& getGameEvents() { return m_gameEvents; }
 
     private:
         InputManager& m_input;
-        GameEventSystem& m_gameEvents;
         InputContext     m_context = InputContext::UI;
 
         IInputHandler* m_gameHandler = nullptr;

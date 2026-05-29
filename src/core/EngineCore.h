@@ -15,8 +15,9 @@
 
 #include "input/InputManager.h"
 #include "input/InputContext.h"
-#include "input/GameEvent.h"
 #include "input/InputRouter.h"
+#include "input/ControllerSystem.h"
+#include "input/MovementSystem.h"
 
 #include "utils/fps.h"
 
@@ -54,8 +55,8 @@ namespace Lengine {
         RenderSettings& getRenderSettings();
         RuntimeStats& getRuntimeStats();
         PhysicsSystem& getPhysicsSystem();
+
         InputRouter& getInputRouter() { return inputRouter; }
-        GameEventSystem& getGameEventSystem() { return gameEventSystem; }
 
     private:
 
@@ -80,8 +81,9 @@ namespace Lengine {
         AnimationSystem animationSystem;
         TransformSystem transformSystem;
         PhysicsSystem physicsSystem;
+        ControllerSystem controllerSystem;
+        MovementSystem movementSystem;
 
-        GameEventSystem gameEventSystem;  
         InputRouter     inputRouter;      
 
         bool running = true;

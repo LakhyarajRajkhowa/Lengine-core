@@ -22,7 +22,7 @@ namespace Lengine {
 
         fov = FOV;
         aspectRatio = (static_cast<float>(width) / static_cast<float>(height));
-        _inputManager = inputManager;
+        inputManager = inputManager;
 
         direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         direction.y = sin(glm::radians(pitch));
