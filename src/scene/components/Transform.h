@@ -64,6 +64,34 @@ namespace Lengine {
             return glm::inverse(world);
         }
 
+        void SetPosition(const glm::vec3& pos)
+        {
+            localPosition = pos;
+            localDirty = true;
+            worldDirty = true;
+        }
+
+        void Translate(const glm::vec3& delta)
+        {
+            localPosition += delta;
+            localDirty = true;
+            worldDirty = true;
+        }
+
+        void SetRotation(const glm::quat& rot)
+        {
+            localRotation = rot;
+            localDirty = true;
+            worldDirty = true;
+        }
+
+        void SetScale(const glm::vec3& scale)
+        {
+            localScale = scale;
+            localDirty = true;
+            worldDirty = true;
+        }
+
 
     };
 

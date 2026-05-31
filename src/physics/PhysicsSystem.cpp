@@ -157,7 +157,6 @@ void PhysicsSystem::UpdateTransforms(ComponentStorage<TransformComponent>& trans
 
         transform.localDirty = true;
         transform.worldDirty = true;
-        TransformSystem::Dirty = true;
     }
     
 }

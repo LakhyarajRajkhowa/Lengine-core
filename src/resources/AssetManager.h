@@ -131,7 +131,7 @@ namespace Lengine {
 		void ImportMesh(const std::string& path);
 		void ImportPrefab(const std::string& path);
 		bool LoadPrefabToScene(const std::string& path);
-		Entity* InstantiatePrefab(
+		Entity InstantiatePrefab(
 			Scene& scene,
 			const PrefabData& prefab
 		);

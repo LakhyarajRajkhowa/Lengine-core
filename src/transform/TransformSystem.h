@@ -15,19 +15,18 @@ namespace Lengine {
     class TransformSystem
     {
     public:
-        static bool Dirty;
 
         static void RecalculateLocalMatrix(TransformComponent& t)
         {
             t.localMatrix = glm::translate(glm::mat4(1.0f), t.localPosition)
-                * glm::mat4_cast(t.localRotation)   // ← no euler order issue
+                * glm::mat4_cast(t.localRotation)  
                 * glm::scale(glm::mat4(1.0f), t.localScale);
         }
 
         static void DecomposeMatrix(
             const glm::mat4& m,
             glm::vec3& position,
-            glm::quat& rotation,      // ← quat instead of euler
+            glm::quat& rotation,     
             glm::vec3& scale
         )
         {
@@ -50,7 +49,7 @@ namespace Lengine {
             rotMat[1] = y;
             rotMat[2] = z;
 
-            rotation = glm::quat_cast(rotMat);  // ← no euler conversion, no drift
+            rotation = glm::quat_cast(rotMat);  
         }
 
         void Update(
@@ -66,6 +65,7 @@ namespace Lengine {
             ComponentStorage<TransformComponent>& transforms,
             const ComponentStorage<HierarchyComponent>& hierarchys
         );
+
        
     };
 

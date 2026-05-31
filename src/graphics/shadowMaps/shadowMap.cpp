@@ -46,7 +46,7 @@ void ShadowMap::Init() {
 
 
 void ShadowMap::renderDepthMap(
-    const std::vector<std::unique_ptr<Entity>>& entities,
+    const std::vector<Entity> entities,
     const ComponentStorage<TransformComponent>& trs,
     const ComponentStorage<MeshFilter>& mfs,
     const Entity& mainDirectionalLight,
@@ -99,11 +99,11 @@ void ShadowMap::renderDepthMap(
 
     for (auto& e : entities)
     {
-        if (!trs.Has(*e) || !mfs.Has(*e) || *e == mainDirectionalLight) continue;;
+        if (!trs.Has(e) || !mfs.Has(e) || e == mainDirectionalLight) continue;;
 
-        auto& tr = trs.Get(*e);
+        auto& tr = trs.Get(e);
         depthShader.setMat4("model", tr.worldMatrix);
-        auto& mf = mfs.Get(*e);
+        auto& mf = mfs.Get(e);
 
         auto* mesh = assetManager.GetSubmesh(mf.meshID);
         if (mesh) {

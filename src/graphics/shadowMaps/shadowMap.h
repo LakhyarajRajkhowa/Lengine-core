@@ -14,7 +14,7 @@ namespace Lengine {
 		ShadowMap() = default;
 		void Init();
 		void renderDepthMap(
-			const std::vector<std::unique_ptr<Entity>>& entities,
+			const std::vector<Entity> entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
 			const Entity& mainDirectionalLight,

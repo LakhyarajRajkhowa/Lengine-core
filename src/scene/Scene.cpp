@@ -4,60 +4,51 @@
 
 using namespace Lengine;
 
-Entity* Scene::createEntity_root(const std::string& name)
+Entity Scene::createEntity_root(const std::string& name)
 {
     Entity id = nextEntityID++;
-    auto entity = std::make_unique<Entity>(id);
+
+    registry.CreateEntity();
     registry.nameTags.Add(id, NameTagComponent(name));
 
-    Entity* entityPtr = entity.get();
-    entities.push_back(std::move(entity));
     rootEntities.push_back(id);
 
-    return entityPtr;
+    return id;
 }
 
-Entity* Scene::createEntity(const std::string& name)
+Entity Scene::createEntity(const std::string& name)
 {
     Entity id = nextEntityID++;
-    auto entity = std::make_unique<Entity>(id);
+
+    registry.CreateEntity();
     registry.nameTags.Add(id, NameTagComponent(name));
 
-    Entity* entityPtr = entity.get();
-    entities.push_back(std::move(entity));
-
-    return entityPtr;
+    return id;
 }
 
 Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot)
 {
-    auto entity = std::make_unique<Entity>(nextEntityID++);
-
-    Entity* newEntity = addEntity(std::move(entity), originalID);
-    Entity newID = *newEntity;
+    Entity newEntity = addEntity(nextEntityID++, originalID);
 
     if (newRoot == NullEntity)
-        newRoot = newID;
+        newRoot = newEntity;
 
     if (newParent != NullEntity)
     {
-        auto& h = registry.hierarchies.Add(newID);
+        auto& h = registry.hierarchies.Add(newEntity);
         h.parent = newParent;
-        registry.hierarchies.Get(newParent).children.push_back(newID);
+        registry.hierarchies.Get(newParent).children.push_back(newEntity);
 
-        rootEntities.erase(
-            std::remove(rootEntities.begin(), rootEntities.end(), newID),
-            rootEntities.end()
-        );
+        std20::erase(rootEntities, newEntity);
     }
     else
     {
-        registry.hierarchies.Add(newID);
+        registry.hierarchies.Add(newEntity);
     }
 
-    if (registry.meshFilters.Has(newID))
+    if (registry.meshFilters.Has(newEntity))
     {
-        registry.meshFilters.Get(newID).rootParent = newRoot;
+        registry.meshFilters.Get(newEntity).rootParent = newRoot;
     }
 
     if (registry.hierarchies.Has(originalID))
@@ -66,11 +57,11 @@ Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Enti
 
         for (Entity child : children)
         {
-            DuplicateEntityRecursive(child, newID, newRoot);
+            DuplicateEntityRecursive(child, newEntity, newRoot);
         }
     }
 
-    return newID;
+    return newEntity;
 }
 
 Entity Scene::DuplicateHierarchy(Entity rootID)
@@ -78,30 +69,20 @@ Entity Scene::DuplicateHierarchy(Entity rootID)
     return DuplicateEntityRecursive(rootID, NullEntity, NullEntity);
 }
 
-Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId)
+Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
 {
-    if (!entity)
-        return nullptr;
-
-    if (*entity == NullEntity)
-    {
-        *entity = nextEntityID++;
-    }
-
-    Entity entityId = *entity;
+    if (entityId == NullEntity)
+        entityId = nextEntityID++;
 
     if (registry.transforms.Has(originalEntityId)) {
         const TransformComponent& oldTrans = registry.transforms.Get(originalEntityId);
-        TransformComponent newTrans = TransformComponent(oldTrans);
-        registry.transforms.Add(entityId, newTrans);
+        registry.transforms.Add(entityId, TransformComponent(oldTrans));
 
         auto& t = registry.transforms.Get(entityId);
         glm::vec3 offset = glm::vec3{ (t.GetWorldScale().x * 1.0f), 0.0f, (t.GetWorldScale().z * 1.0f) };
-
         t.localPosition += offset;
         t.localDirty = true;
-
-        TransformSystem::Dirty = true;
+        t.worldDirty = true;
     }
 
     if (registry.meshFilters.Has(originalEntityId)) {
@@ -113,8 +94,7 @@ Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEn
 
     if (registry.meshRenderers.Has(originalEntityId)) {
         const MeshRenderer& oldMr = registry.meshRenderers.Get(originalEntityId);
-        MeshRenderer newMr = MeshRenderer(oldMr);
-        registry.meshRenderers.Add(entityId, newMr);
+        registry.meshRenderers.Add(entityId, MeshRenderer(oldMr));
     }
 
     if (registry.lights.Has(originalEntityId)) {
@@ -138,15 +118,10 @@ Entity* Scene::addEntity(std::unique_ptr<Entity> entity, const Entity originalEn
         registry.animations.Add(entityId, AnimationComponent(anim.animationIDs));
     }
 
-    // ----- COLLIDER ----
-    //if (registry.colliders.Has(originalEntityId)) {
-    //    ColliderComponent& col = registry.colliders.Get(originalEntityId);    
-    //    registry.colliders.Add(entityId, ColliderComponent(col.shapes));
-    //}
-
-    entities.push_back(std::move(entity));
+    registry.GetEntities().push_back(entityId);
     rootEntities.push_back(entityId);
-    return entities.back().get();
+
+    return entityId;
 }
 
 Entity Scene::GetRootParent(const Entity& entityID)
@@ -185,9 +160,7 @@ void Scene::RemoveEntity(const Entity id)
         {
             auto& parentH = registry.hierarchies.Get(h.parent);
             parentH.children.erase(
-                std::remove(parentH.children.begin(),
-                    parentH.children.end(),
-                    id),
+                std::remove(parentH.children.begin(), parentH.children.end(), id),
                 parentH.children.end()
             );
         }
@@ -195,22 +168,8 @@ void Scene::RemoveEntity(const Entity id)
         registry.hierarchies.Remove(id);
     }
 
-    rootEntities.erase(
-        std::remove(rootEntities.begin(), rootEntities.end(), id),
-        rootEntities.end()
-    );
-
-    entities.erase(
-        std::remove_if(
-            entities.begin(),
-            entities.end(),
-            [&](const std::unique_ptr<Entity>& e)
-            {
-                return *e == id;
-            }
-        ),
-        entities.end()
-    );
+    std20::erase(rootEntities, id);
+    std20::erase(registry.GetEntities(), id);
 
     if (registry.transforms.Has(id))    registry.transforms.Remove(id);
     if (registry.meshFilters.Has(id))   registry.meshFilters.Remove(id);
@@ -233,26 +192,7 @@ void Scene::RemoveEntityRecursive(Entity id)
     RemoveEntity(id);
 }
 
-const Entity* Scene::getEntityByID(const Entity& id) const {
-    for (auto& entity : entities) {
-        if (*entity == id) {
-            return entity.get();
-        }
-    }
-    return nullptr;
-}
 
-Entity* Scene::getEntityByID(const Entity& id) {
-    if (id == NullEntity)
-        return nullptr;
-
-    for (auto& entity : entities) {
-        if (*entity == id) {
-            return entity.get();
-        }
-    }
-    return nullptr;
-}
 
 bool Scene::HasChildren(Entity entityID) const
 {
@@ -333,12 +273,12 @@ std::string Scene::GenerateDuplicateName(Scene* scene, const std::string& baseNa
 
         bool exists = false;
 
-        for (auto& e : scene->getEntities())
+        for (const Entity& e : scene->GetRegistry().GetEntities())
         {
-            if (!scene->GetRegistry().nameTags.Has(*e))
+            if (!scene->GetRegistry().nameTags.Has(e))
                 continue;
 
-            auto& tag = scene->GetRegistry().nameTags.Get(*e);
+            auto& tag = scene->GetRegistry().nameTags.Get(e);
 
             if (tag.name == newName)
             {
@@ -360,23 +300,14 @@ std::unique_ptr<Scene> Scene::Clone()
 
     std::unordered_map<Entity, Entity> entityMap;
 
-    for (const auto& e : entities)
+    for (const Entity& e : registry.GetEntities())
     {
-        Entity newID = nextEntityID++;
-
-        entityMap[*e] = newID;
-
-        newScene->entities.push_back(
-            std::make_unique<Entity>(newID)
-        );
+        entityMap[e] = e;
+        newScene->GetRegistry().GetEntities().push_back(e);
     }
 
     for (Entity root : rootEntities)
-    {
-        newScene->rootEntities.push_back(
-            entityMap[root]
-        );
-    }
+        newScene->rootEntities.push_back(entityMap[root]);
 
     Registry& newReg = newScene->GetRegistry();
     const Registry& thisReg = registry;
@@ -409,7 +340,6 @@ std::unique_ptr<Scene> Scene::Clone()
         }
 
         newComp.children.reserve(oldComp.children.size());
-
         for (const Entity& oldChild : oldComp.children)
         {
             auto childIt = entityMap.find(oldChild);
@@ -420,6 +350,7 @@ std::unique_ptr<Scene> Scene::Clone()
         newReg.hierarchies.Add(newEntity, std::move(newComp));
     }
 
+    newReg.nameTags.CloneFrom(thisReg.nameTags, entityMap);
     newReg.transforms.CloneFrom(thisReg.transforms, entityMap);
     newReg.meshFilters.CloneFrom(thisReg.meshFilters, entityMap);
     newReg.meshRenderers.CloneFrom(thisReg.meshRenderers, entityMap);
@@ -431,30 +362,29 @@ std::unique_ptr<Scene> Scene::Clone()
     newReg.lights.CloneFrom(thisReg.lights, entityMap);
     newReg.controllers.CloneFrom(thisReg.controllers, entityMap);
     newReg.movements.CloneFrom(thisReg.movements, entityMap);
+    newReg.scripts.CloneFrom(thisReg.scripts, entityMap);
 
-    Entity oldPrimary = primaryCamera;
-    if (oldPrimary != NullEntity)
+    if (primaryCamera != NullEntity)
     {
-        auto it = entityMap.find(oldPrimary);
+        auto it = entityMap.find(primaryCamera);
         if (it != entityMap.end())
             newScene->SetPrimaryCamera(it->second);
     }
 
-    Entity oldDirectionalShadowCaster = directionalShadowCaster;
-    if (oldDirectionalShadowCaster != NullEntity) {
-        auto it = entityMap.find(oldDirectionalShadowCaster);
+    if (directionalShadowCaster != NullEntity)
+    {
+        auto it = entityMap.find(directionalShadowCaster);
         if (it != entityMap.end())
             newScene->SetDirectionalShadowCaster(it->second);
     }
 
-    Entity oldPointShadowCaster = pointShadowCaster;
-    if (oldPointShadowCaster != NullEntity) {
-        auto it = entityMap.find(oldPointShadowCaster);
+    if (pointShadowCaster != NullEntity)
+    {
+        auto it = entityMap.find(pointShadowCaster);
         if (it != entityMap.end())
             newScene->SetPointShadowCaster(it->second);
     }
 
-    // Very IMPORTANT !!! : remap mf.rootparent
     for (auto& mf : newReg.meshFilters.GetDense())
     {
         if (mf.rootParent != NullEntity)
@@ -464,15 +394,13 @@ std::unique_ptr<Scene> Scene::Clone()
         }
     }
 
-    // 
     for (auto& col : newReg.colliders.GetDense()) {
         for (auto& shape : col.shapes)
         {
-            shape.runtimeShape = nullptr; // was pointing to editor's PxShape
-            shape.dirty = true;           // force re-creation
+            shape.runtimeShape = nullptr;
+            shape.dirty = true;
         }
     }
-      
-    
+
     return newScene;
 }

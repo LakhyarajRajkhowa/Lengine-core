@@ -6,6 +6,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <iostream>
+
 #include "scene/components/ComponentStorage.h"
 
 
@@ -20,6 +22,7 @@ namespace Lengine {
         {
             Entity id = m_NextID++;
             m_Entities.push_back(id);
+
             return id;
         }
 
@@ -38,6 +41,7 @@ namespace Lengine {
             cameras.Remove(id);
             hierarchies.Remove(id);
             lights.Remove(id);
+            scripts.Remove(id);
 
             auto it = std::find(m_Entities.begin(), m_Entities.end(), id);
             if (it != m_Entities.end())
@@ -49,6 +53,7 @@ namespace Lengine {
             return std::find(m_Entities.begin(), m_Entities.end(), id) != m_Entities.end();
         }
 
+        std::vector<Entity>& GetEntities()  { return m_Entities; }
         const std::vector<Entity>& GetEntities() const { return m_Entities; }
 
         // Find the smallest storage size among all requested types
@@ -82,6 +87,8 @@ namespace Lengine {
         ComponentStorage<CameraComponent>     cameras;
         ComponentStorage<HierarchyComponent>  hierarchies;
         ComponentStorage<Light>               lights;
+        ComponentStorage<ScriptComponent> scripts;
+
 
         void Clear()
         {
@@ -91,7 +98,7 @@ namespace Lengine {
             skeletons.Clear();     animations.Clear();     colliders.Clear();
             controllers.Clear();   movements.Clear();      rigidBodies.Clear();
             nameTags.Clear();      cameras.Clear();        hierarchies.Clear();
-            lights.Clear();
+            lights.Clear(); scripts.Clear();
         }
 
 
@@ -139,6 +146,8 @@ namespace Lengine {
     template<> inline size_t Registry::StorageSize<CameraComponent>()     const { return cameras.Size(); }
     template<> inline size_t Registry::StorageSize<HierarchyComponent>()  const { return hierarchies.Size(); }
     template<> inline size_t Registry::StorageSize<Light>()               const { return lights.Size(); }
+    template<> inline size_t Registry::StorageSize<ScriptComponent>()     const { return scripts.Size(); }
+
 
 
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<TransformComponent>()  const { return transforms.GetEntities(); }
@@ -154,6 +163,7 @@ namespace Lengine {
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<CameraComponent>()     const { return cameras.GetEntities(); }
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<HierarchyComponent>()  const { return hierarchies.GetEntities(); }
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<Light>()               const { return lights.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ScriptComponent>()     const { return scripts.GetEntities(); }
 
 
     template<> inline bool Registry::HasComponent<TransformComponent>(Entity e) const { return transforms.Has(e); }
@@ -221,6 +231,12 @@ namespace Lengine {
     template<> inline Light& Registry::AddComponent<Light>(Entity e, const Light& c) { return lights.Add(e, c); }
     template<> inline void Registry::RemoveComponent<Light>(Entity e) { lights.Remove(e); }
 
+
+    template<> inline bool Registry::HasComponent<ScriptComponent>(Entity e) const { return scripts.Has(e); }
+    template<> inline ScriptComponent& Registry::GetComponent<ScriptComponent>(Entity e) { return scripts.Get(e); }
+    template<> inline ScriptComponent& Registry::AddComponent<ScriptComponent>(Entity e, const ScriptComponent& c) { return scripts.Add(e, c); }
+    template<> inline void Registry::RemoveComponent<ScriptComponent>(Entity e) { scripts.Remove(e); }
+
     // for the const version of Get()
     template<> inline const TransformComponent& Registry::GetComponent<TransformComponent>(Entity e) const { return transforms.Get(e); }
     template<> inline const MeshRenderer& Registry::GetComponent<MeshRenderer>(Entity e) const { return meshRenderers.Get(e); }
@@ -235,5 +251,7 @@ namespace Lengine {
     template<> inline const CameraComponent& Registry::GetComponent<CameraComponent>(Entity e) const { return cameras.Get(e); }
     template<> inline const HierarchyComponent& Registry::GetComponent<HierarchyComponent>(Entity e) const { return hierarchies.Get(e); }
     template<> inline const Light& Registry::GetComponent<Light>(Entity e) const { return lights.Get(e); }
+    template<> inline const ScriptComponent& Registry::GetComponent<ScriptComponent>(Entity e) const { return scripts.Get(e); }
+
 
 } // namespace Lengine

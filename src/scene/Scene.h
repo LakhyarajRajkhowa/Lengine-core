@@ -17,27 +17,25 @@ namespace Lengine {
         {
         }
   
-        Entity* createEntity_root(
+         Entity createEntity_root(
             const std::string& name
         );
 
-        Entity* createEntity(
+         Entity createEntity(
             const std::string& name
         );
 
-        Entity GetRootParent(const Entity& entityID);
-        Entity DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot);
-        Entity DuplicateHierarchy(Entity rootID);
+         Entity GetRootParent(const Entity& entityID);
+         Entity DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot);
+         Entity DuplicateHierarchy(Entity rootID);
 
-        Entity* getEntityByID(const Entity& UUID);
-        Entity* addEntity(std::unique_ptr<Entity> entity, const Entity originalEntityId);
+        Entity addEntity(Entity entity, const Entity originalEntityId);
        
-        const  Entity* getEntityByID(const Entity& id) const;
 
 
-        const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
-        std::vector<std::unique_ptr<Entity>>& getEntities() {
-            return entities;
+        const std::vector<Entity>& getEntities() const { return registry.GetEntities(); }
+        std::vector<Entity>& getEntities() {
+            return registry.GetEntities();
         }
 
         const std::vector<Entity>& GetRootEntities() const { return rootEntities; }
@@ -45,7 +43,7 @@ namespace Lengine {
             return rootEntities;
         }
 
-        bool IsRootEntity(const Entity& id)
+        bool IsRootEntity(const Entity id)
         {
             const auto& roots = GetRootEntities();
             return std::find(roots.begin(), roots.end(), id) != roots.end();
@@ -129,7 +127,6 @@ namespace Lengine {
     private:
         std::string name;
         UUID sceneID;
-        std::vector<std::unique_ptr<Entity>> entities;
         std::vector<Entity> rootEntities;
 
         Entity nextEntityID = 1;

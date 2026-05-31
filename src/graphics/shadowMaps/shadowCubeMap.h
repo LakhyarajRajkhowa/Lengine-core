@@ -18,7 +18,7 @@ namespace Lengine {
 		const float& getFarPlane() { return farPlane; }
 
 		void renderDepthCubeMap(
-			const std::vector<std::unique_ptr<Entity>>& entities,
+			const std::vector<Entity> entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
 			const Entity& mainPointLight,

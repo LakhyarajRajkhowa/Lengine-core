@@ -112,7 +112,6 @@ namespace Lengine {
         // Mark transform dirty
         transform.localDirty = true;
         transform.worldDirty = true;
-        TransformSystem::Dirty = true;
 
 
     }

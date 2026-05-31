@@ -17,7 +17,8 @@ namespace Lengine {
         animationSystem(assetManager),
         inputRouter(inputManager),
         controllerSystem(sceneManager, inputManager),
-        movementSystem(sceneManager)
+        movementSystem(sceneManager),
+        scriptSystem(sceneManager, inputManager)
 
     {
     }
@@ -30,7 +31,7 @@ namespace Lengine {
         renderSettings.resolution_Y = settings.resolution_Y;
      
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("emptyScene");
+        scenesTobeLoaded.push_back("light_test");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 
@@ -39,6 +40,8 @@ namespace Lengine {
         renderPipeline.Init();
 
         physicsSystem.Init();
+
+        scriptSystem.LoadLibrary("GameScripts.dll");
 
     }
 
@@ -59,13 +62,14 @@ namespace Lengine {
 
     void EngineCore::updateRuntime(const EditorMode& mode)
     {
-        Scene* runtimeScene = sceneManager.GetActiveScene(mode);
+        Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
 
-        // !!! THIS FLOW MATTERS : controller -> movement -> physics -> animation -> transform
+        // !!! THIS FLOW MATTERS : controller -> movement -> physics -> scripts -> animation -> transform
 
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
         physicsSystem.update(deltaTime, runtimeScene->GetRegistry().transforms);
+        scriptSystem.OnUpdate(deltaTime);
         animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
     }
 
@@ -89,6 +93,7 @@ namespace Lengine {
     {
         sceneManager.CreateRuntimeScene();
 
+
         // Lock cursor 
         SDL_SetRelativeMouseMode(SDL_TRUE);
 
@@ -98,7 +103,10 @@ namespace Lengine {
     }
 
     void EngineCore::exitPlayMode()
+
     {
+        scriptSystem.OnDestroy();
+
         // Restore cursor
         SDL_SetRelativeMouseMode(SDL_FALSE);
 
@@ -110,22 +118,31 @@ namespace Lengine {
 
     void EngineCore::run(const EditorMode mode)
     {
-
-        Scene* activeScene = sceneManager.GetActiveScene(mode);
-
         updateEssentials(mode);
-
         pollEvents();
 
-        if(mode == EditorMode::PLAY)
+        if (mode == EditorMode::PLAY)
+        {
             updateRuntime(mode);
 
-        transformSystem.Update(activeScene->GetRegistry().transforms, activeScene->GetRegistry().hierarchies, activeScene->GetRootEntities());
-
-        
-
-
-
+            // Use the RUNTIME scene for transform propagation during play
+            Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
+            transformSystem.Update(
+                runtimeScene->GetRegistry().transforms,
+                runtimeScene->GetRegistry().hierarchies,
+                runtimeScene->GetRootEntities()
+            );
+        }
+        else
+        {
+            // Editor mode — use the editor scene as before
+            Scene* editorScene = sceneManager.GetEditorScene();
+            transformSystem.Update(
+                editorScene->GetRegistry().transforms,
+                editorScene->GetRegistry().hierarchies,
+                editorScene->GetRootEntities()
+            );
+        }
     }
 
     void EngineCore::presentFrame()
@@ -191,6 +208,11 @@ namespace Lengine {
     PhysicsSystem& EngineCore::getPhysicsSystem()
     {
         return physicsSystem;
+    }
+
+    ScriptSystem& EngineCore::getScriptSystem()
+    {
+        return scriptSystem;
     }
 
 }

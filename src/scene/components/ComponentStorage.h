@@ -21,7 +21,7 @@
 #include "CameraComponent.h"
 #include "Hierarchy.h"
 #include "Light.h"
-
+#include "ScriptComponent.h"
 
 namespace Lengine {
 
@@ -47,6 +47,7 @@ namespace Lengine {
 
             m_Dense.push_back(component);
             m_DenseEntities.push_back(entityID);
+
 
             return m_Dense.back();
         }

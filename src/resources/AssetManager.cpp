@@ -409,22 +409,22 @@ bool AssetManager::LoadPrefabToScene(const std::string& path) {
 }
 
 
-Entity* AssetManager::InstantiatePrefab(
+Entity AssetManager::InstantiatePrefab(
     Scene& scene,
     const PrefabData& prefab
 )
 {
     Registry& registry = scene.GetRegistry();
 
-    std::vector<Entity*> entities(prefab.nodes.size(), nullptr);
+    std::vector<Entity> entities(prefab.nodes.size());
 
     // ---- Create entities ----
     for (const auto& node : prefab.nodes)
     {
-        Entity* e = scene.createEntity_root(node.name);
+        Entity e = scene.createEntity_root(node.name);
         entities[node.index] = e;
 
-        auto& t = registry.transforms.Add(*e);
+        auto& t = registry.transforms.Add(e);
 
         TransformSystem::DecomposeMatrix(
             node.localTransform,
@@ -436,24 +436,23 @@ Entity* AssetManager::InstantiatePrefab(
         t.localDirty = true;
         t.worldDirty = true;
 
-        TransformSystem::Dirty = true;
 
         if (node.meshID != UUID::Null)
         {
             // Submesh
-            if (!registry.meshFilters.Has(*e)) {
-                auto& mf = registry.meshFilters.Add(*e);
-                RequestSubmeshLoad(node.meshID, *e);
+            if (!registry.meshFilters.Has(e)) {
+                auto& mf = registry.meshFilters.Add(e);
+                RequestSubmeshLoad(node.meshID, e);
             }
             else {
-                RequestSubmeshLoad(node.meshID, *e);
+                RequestSubmeshLoad(node.meshID, e);
             }
 
             // Material
             if (node.materialID != UUID::Null)
             {
-                if (!registry.meshRenderers.Has(*e)) {
-                    auto& mr = registry.meshRenderers.Add(*e);
+                if (!registry.meshRenderers.Has(e)) {
+                    auto& mr = registry.meshRenderers.Add(e);
 
                     if (LoadMaterial(node.materialID)) {
                         mr.inst.baseMaterial = node.materialID;
@@ -461,7 +460,7 @@ Entity* AssetManager::InstantiatePrefab(
                     }
                 }
                 else {
-                    auto& mr = registry.meshRenderers.Get(*e);
+                    auto& mr = registry.meshRenderers.Get(e);
 
                     if (LoadMaterial(node.materialID)) {
                         mr.inst.baseMaterial = node.materialID;
@@ -470,12 +469,12 @@ Entity* AssetManager::InstantiatePrefab(
                 }
             }
             else {
-                if (!registry.meshRenderers.Has(*e)) {
-                    auto& mr = registry.meshRenderers.Add(*e);
+                if (!registry.meshRenderers.Has(e)) {
+                    auto& mr = registry.meshRenderers.Add(e);
                     mr.inst.baseMaterial = MaterialID::DefaultPbr;
                 }
                 else {
-                    auto& mr = registry.meshRenderers.Get(*e);
+                    auto& mr = registry.meshRenderers.Get(e);
                     mr.inst.baseMaterial = MaterialID::DefaultPbr;
                 }
             }
@@ -487,25 +486,25 @@ Entity* AssetManager::InstantiatePrefab(
         if (node.parentIndex != -1)
         {
             scene.SetParent(
-                *entities[node.index],
-                *entities[node.parentIndex]
+                entities[node.index],
+                entities[node.parentIndex]
             );
         }
     }
 
     for (auto& e : entities) {
-        if (registry.meshFilters.Has(*e)) {
-            auto& m = registry.meshFilters.Get(*e);
-            m.rootParent = *entities[0];
+        if (registry.meshFilters.Has(e)) {
+            auto& m = registry.meshFilters.Get(e);
+            m.rootParent = entities[0];
         }
     }
 
     // -------- SKELETON (root) --------
     if (prefab.skeletonID != UUID::Null)
     {
-        if (!registry.skeletons.Has(*entities[0]))
+        if (!registry.skeletons.Has(entities[0]))
         {
-            auto& sk = registry.skeletons.Add(*entities[0]);
+            auto& sk = registry.skeletons.Add(entities[0]);
 
             sk.skeletonID = prefab.skeletonID;
 
@@ -520,9 +519,9 @@ Entity* AssetManager::InstantiatePrefab(
     // -------- ANIMATION (root) --------
     if (!prefab.animationIDs.empty())
     {
-        if (!registry.animations.Has(*entities[0]))
+        if (!registry.animations.Has(entities[0]))
         {
-            auto& anim = registry.animations.Add(*entities[0]);
+            auto& anim = registry.animations.Add(entities[0]);
 
             anim.animationIDs = prefab.animationIDs;
 
@@ -919,7 +918,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
     for (const auto& entityPtr : entities)
     {
-        const Entity entityID = *entityPtr;
+        const Entity entityID = entityPtr;
         const std::string entityName = registry.nameTags.Get(entityID).name;
 
         json jEntity;
@@ -1149,9 +1148,9 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
         {
             try {
                 std::string entityName = jEntity.at("name").get<std::string>();
-                Entity* entity = scene->createEntity(entityName);
+                Entity entity = scene->createEntity(entityName);
 
-                const Entity entityID = *entity;
+                const Entity entityID = entity;
                 Registry& registry = scene->GetRegistry();
 
                 registry.nameTags.Add(entityID, NameTagComponent(entityName));

@@ -1,24 +1,24 @@
 #include "TransformSystem.h"
 
+#include <iostream>
+
 using namespace Lengine;
 
-bool TransformSystem::Dirty = true;
 
 void TransformSystem::Update(
     ComponentStorage<TransformComponent>& transforms,
     const ComponentStorage<HierarchyComponent>& hierarchys,
 	const std::vector<Entity> rootEntities
 ) {
-    if (TransformSystem::Dirty) {
-        const glm::mat4 identity(1.0f);
 
-        for (Entity root : rootEntities)
-        {
-            UpdateWorldTransformRecursive(root, identity, true, transforms, hierarchys);
-        }
 
-        TransformSystem::Dirty = false;
+    const glm::mat4 identity(1.0f);
+
+    for (Entity root : rootEntities)
+    {
+        UpdateWorldTransformRecursive(root, identity, true, transforms, hierarchys);
     }
+
 }
 
 void TransformSystem::UpdateWorldTransformRecursive(
