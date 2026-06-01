@@ -3,30 +3,38 @@
 
 namespace Lengine {
 
-    bool ScriptSystem::LoadLibrary(const std::string& dllPath)
-    {
-        return library.Load(dllPath);
+    void ScriptSystem::Init(const std::string& dllPath) {
+        library.Load(dllPath);
     }
 
-    void ScriptSystem::InjectContext(ScriptableEntity& script,
-        Entity entity,
-        Registry& registry,
-        InputManager& input)
-    {
-        script.entity = entity;
-        script.registry = &registry;
-        script.input = &input;
+
+    void ScriptSystem::Update(float dt) {
+        CheckHotReload();
+
+        OnUpdate(dt);
     }
+
+
+    void ScriptSystem::CheckHotReload()
+    {
+        if (!library.IsLoaded()) return;
+
+        if (!library.NeedsReload()) return;
+
+        std::cout << "[ScriptSystem] Hot reload — restarting scripts\n";
+
+        OnDestroy();          
+        library.Load(library.GetPath());  
+        OnCreate();           
+    }
+
 
     void ScriptSystem::OnCreate()
     {
         auto& scene = sceneManager.GetRuntimeScene();
-
         Registry& registry = scene->GetRegistry();
 
-        const auto& entities = registry.scripts.GetEntities();
-
-        for (Entity e : entities)
+        for (Entity e : registry.scripts.GetEntities())
         {
             ScriptComponent& sc = registry.scripts.Get(e);
 
@@ -35,8 +43,8 @@ namespace Lengine {
                 ScriptableEntity* s = library.Instantiate(name);
                 if (!s) continue;
 
-                ownedScripts[e].push_back(s);       // ScriptSystem owns it
-                sc.scripts.push_back(s);          // component just points to it
+                ownedScripts[e].push_back(s);
+                sc.scripts.push_back(s);
 
                 s->entity = e;
                 s->registry = &registry;
@@ -49,27 +57,19 @@ namespace Lengine {
     void ScriptSystem::OnUpdate(float dt)
     {
         auto& scene = sceneManager.GetRuntimeScene();
-
         Registry& registry = scene->GetRegistry();
 
-        const auto& entities = registry.scripts.GetEntities();
-
-       
-        for (Entity e : entities)
+        for (Entity e : registry.scripts.GetEntities())
         {
             ScriptComponent& sc = registry.scripts.Get(e);
             for (ScriptableEntity* s : sc.scripts)
                 s->OnUpdate(dt);
-
-
         }
-
     }
 
     void ScriptSystem::OnDestroy()
     {
         auto& scene = sceneManager.GetRuntimeScene();
-
         Registry& registry = scene->GetRegistry();
 
         for (auto& [e, ptrs] : ownedScripts)
@@ -87,21 +87,15 @@ namespace Lengine {
         ownedScripts.clear();
     }
 
-    void ScriptSystem::OnCollisionEnter( Entity a, Entity b)
+    void ScriptSystem::OnCollisionEnter(Entity a, Entity b)
     {
         auto& scene = sceneManager.GetRuntimeScene();
-
         Registry& registry = scene->GetRegistry();
 
-        auto notify = [&](Entity self, Entity other)
-            {
-                if (!registry.scripts.Has(self)) return;
-
-                ScriptComponent& sc = registry.scripts.Get(self);
-                for (auto& script : sc.scripts)
-                {
-                    if (script) script->OnCollisionEnter(other);
-                }
+        auto notify = [&](Entity self, Entity other) {
+            if (!registry.scripts.Has(self)) return;
+            for (auto& s : registry.scripts.Get(self).scripts)
+                if (s) s->OnCollisionEnter(other);
             };
 
         notify(a, b);
@@ -111,18 +105,12 @@ namespace Lengine {
     void ScriptSystem::OnCollisionExit(Entity a, Entity b)
     {
         auto& scene = sceneManager.GetRuntimeScene();
-
         Registry& registry = scene->GetRegistry();
 
-        auto notify = [&](Entity self, Entity other)
-            {
-                if (!registry.scripts.Has(self)) return;
-
-                ScriptComponent& sc = registry.scripts.Get(self);
-                for (auto& script : sc.scripts)
-                {
-                    if (script) script->OnCollisionExit(other);
-                }
+        auto notify = [&](Entity self, Entity other) {
+            if (!registry.scripts.Has(self)) return;
+            for (auto& s : registry.scripts.Get(self).scripts)
+                if (s) s->OnCollisionExit(other);
             };
 
         notify(a, b);

@@ -4,9 +4,6 @@
 #include "scene/SceneManager.h"
 #include "input/InputManager.h"
 
-
-
-
 namespace Lengine {
 
     class ScriptSystem
@@ -14,7 +11,11 @@ namespace Lengine {
     public:
         ScriptSystem(SceneManager& scn, InputManager& input) : sceneManager(scn), input(input) {}
 
-        bool LoadLibrary(const std::string& dllPath);
+        void Init(const std::string& dllPath);
+
+        void Update(float dt);
+
+        void CheckHotReload();
 
         void OnCreate();
         void OnUpdate(float dt);
@@ -23,20 +24,17 @@ namespace Lengine {
         void OnCollisionEnter(Entity a, Entity b);
         void OnCollisionExit(Entity a, Entity b);
 
+        const ScriptLibrary& GetLibrary() const { return library; }
+        ScriptLibrary& GetLibrary()  { return library; }
+
         bool IsLibraryLoaded() const { return library.IsLoaded(); }
 
     private:
-
         SceneManager& sceneManager;
         InputManager& input;
 
-        void InjectContext(ScriptableEntity& script, Entity entity,
-            Registry& registry, InputManager& input);
-
         ScriptLibrary library;
         std::unordered_map<Entity, std::vector<ScriptableEntity*>> ownedScripts;
-
-
     };
 
 } // namespace Lengine

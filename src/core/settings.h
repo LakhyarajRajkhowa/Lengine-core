@@ -70,6 +70,7 @@ public:
 	std::string gameFolderPath ;
 	std::string engineFolderPath;
 	std::string editorFolderPath;
+	std::string gameExecutableFolder;
 
 	const bool loadSettings();
 	const bool saveSettings();

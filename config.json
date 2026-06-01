@@ -15,7 +15,9 @@
 
     "gameFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/TestGameFolder",
     "engineFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/engine",
-    "editorFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/editor"
+    "editorFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/editor",
+    "gameExecutableFolder": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/bin/Debug"
+
 
 
 }

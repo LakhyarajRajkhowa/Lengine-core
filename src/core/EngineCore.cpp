@@ -41,7 +41,7 @@ namespace Lengine {
 
         physicsSystem.Init();
 
-        scriptSystem.LoadLibrary("GameScripts.dll");
+        scriptSystem.Init(Paths::GameExecutableFolder +  "/GameScripts.dll");
 
     }
 
@@ -69,7 +69,7 @@ namespace Lengine {
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
         physicsSystem.update(deltaTime, runtimeScene->GetRegistry().transforms);
-        scriptSystem.OnUpdate(deltaTime);
+        scriptSystem.Update(deltaTime);
         animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
     }
 

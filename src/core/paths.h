@@ -10,6 +10,7 @@ namespace Lengine {
     {
         static inline std::string EngineFolder;
         static inline std::string EditorFolder;
+        static inline std::string GameExecutableFolder;
 
         static inline std::string Assets;
         static inline std::string Shaders;
@@ -48,12 +49,14 @@ namespace Lengine {
         static void setPaths(
             const std::string& gameFolderPath,
             const std::string& engineFolder,
-            const std::string& editorFolder
+            const std::string& editorFolder,
+            const std::string& gameExectubalefolder
         )
         {
             ActiveGameFolder = gameFolderPath;
             EngineFolder = engineFolder;
             EditorFolder = editorFolder;
+            GameExecutableFolder = gameExectubalefolder;
 
             Assets = engineFolder + "/assets/";
             Shaders = Assets + "Shaders/";

@@ -52,8 +52,9 @@ const bool EngineSettings::loadSettings() {
     gameFolderPath = j.value("gameFolderPath", gameFolderPath);
     engineFolderPath = j.value("engineFolderPath", engineFolderPath);
     editorFolderPath = j.value("editorFolderPath", editorFolderPath);
+    gameExecutableFolder = j.value("gameExecutableFolder", gameExecutableFolder);
 
-    Lengine::Paths::setPaths(gameFolderPath, engineFolderPath, editorFolderPath);
+    Lengine::Paths::setPaths(gameFolderPath, engineFolderPath, editorFolderPath, gameExecutableFolder);
 
     std::cout << "Loaded settings from " << configPath << "\n";
     return true;
