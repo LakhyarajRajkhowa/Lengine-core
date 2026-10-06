@@ -35,10 +35,6 @@ namespace Lengine {
         AssetManager& assetManager;
         FullscreenQuad fullscreenQuad;
 
-        float nearPlane = 0.1f;
-        float farPlane = 1000.5f;
-
-
         RenderQueue   opaqueQueue{ 512 };
         RenderQueue   transparentQueue{ 512 };
         CommandBuffer geometryCommandBuffer{ 2048 };
@@ -47,14 +43,11 @@ namespace Lengine {
             const TransformComponent& lightTransform,
             const glm::vec3& camPos);
         void bindPointShadowUniforms(GLSLProgram& shader, ShadowCubeMap& shadowCubeMap);
-        void bindCameraUniforms(GLSLProgram& shader, const glm::mat4& model, Camera3d& cam);
-        void bindPBRLights(GLSLProgram& shader, const std::vector<Light>& lights);
-        void bindPBRMaterial(GLSLProgram& shader, const ResolvedMaterial& mat);
+     
         void bindTexture(GLSLProgram& shader, AssetManager& am, const UUID& texID,
             bool use, const char* hasUniform, const char* samplerUniform,
             GLenum textureUnit);
-        void drawSubMesh(Mesh& sm, GLSLProgram& shader);
-        void RenderScene_debug(const RenderContext& ctx);
+
     };
 
 } // namespace Lengine

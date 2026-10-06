@@ -527,11 +527,7 @@ void PhysicsSystem::syncRigidbodyProperties(PxRigidDynamic* actor, const Rigidbo
         actor->setLinearVelocity(PxVec3(rb.linearVelocity.x, rb.linearVelocity.y, rb.linearVelocity.z));
         actor->setAngularVelocity(PxVec3(rb.angularVelocity.x, rb.angularVelocity.y, rb.angularVelocity.z));
     }
-    else
-    {
-        actor->setLinearVelocity(PxVec3(0.f));
-        actor->setAngularVelocity(PxVec3(0.f));
-    }
+    
 }
 
 void PhysicsSystem::drainPendingCommands(Entity e, PxRigidDynamic* dyn, RigidbodyComponent& rb)

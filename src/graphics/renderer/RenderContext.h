@@ -9,13 +9,6 @@ namespace Lengine {
         ShadowMap* shadowMap;
         ShadowCubeMap* shadowCubeMap;
 
-        float nearPlane;
-        float farPlane;
-        float frustumHalfExtent;
-
-        float farPlaneCubeMap;
-
-        uint32_t shadowRes;
     };
 
     struct RenderContext {
@@ -35,7 +28,6 @@ namespace Lengine {
         glm::mat3 envRotation;
 
         RenderSettings* settings;
-
 
     };
 

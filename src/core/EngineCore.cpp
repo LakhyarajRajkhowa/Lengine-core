@@ -35,7 +35,7 @@ namespace Lengine {
         assetManager.Init();
 
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("NewScene");
+        scenesTobeLoaded.push_back("newScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 
@@ -82,7 +82,6 @@ namespace Lengine {
         movementSystem.Update(deltaTime);
         animationSystem.Update(registry.animations, registry.skeletons, deltaTime);
         physicsSystem.UpdateRuntime(deltaTime, registry.transforms);
-        particleSystem.Update(deltaTime);
 
         for (auto& e : physicsSystem.ConsumeCollisionEnterEvents())
             scriptSystem.OnCollisionEnter(e.a, e.b);
@@ -92,6 +91,9 @@ namespace Lengine {
             scriptSystem.OnTriggerEnter(e.a, e.b);
         for (auto& e : physicsSystem.ConsumeTriggerExitEvents())
             scriptSystem.OnTriggerExit(e.a, e.b);
+
+        particleSystem.Update(deltaTime, registry.particleEmitters);
+
     }
 
     void EngineCore::pollEvents()
@@ -165,7 +167,6 @@ namespace Lengine {
         else
         {
             Scene* editorScene = sceneManager.GetEditorScene();
-
    
             transformSystem.Update(
                 editorScene->GetRegistry().transforms,
@@ -178,6 +179,8 @@ namespace Lengine {
                 editorScene->GetRegistry().animations,
                 editorScene->GetRegistry().skeletons,
                 editorScene->GetRegistry().transforms);
+
+
 
 
         }

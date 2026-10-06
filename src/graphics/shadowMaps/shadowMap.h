@@ -25,10 +25,12 @@ namespace Lengine {
 
 		const GLuint& getDepthTexture() { return shadowDepthTex; }
 
-		float nearPlane = 0.01f;
-		float farPlane = 1000.0f;
-		float frustumHalfExtent = 20.0f;
-		uint32_t SHADOW_RES = 1024;
+		const float shadowExtent = 20.0f;
+		const float shadowNear = 0.1f;
+		float shadowFar; 
+		glm::mat4 lightSpaceMat = glm::mat4(1.0f);
+
+		const uint32_t SHADOW_RES = 1024;
 
 	private:
 

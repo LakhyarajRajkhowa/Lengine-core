@@ -258,11 +258,6 @@ void RenderPipeline::Render(RenderContext& ctx)
     ctx.irradianceMap = hdrSkybox.GetIrradianceMap();
     ctx.shadowContext.shadowMap = &shadowMap;
     ctx.shadowContext.shadowCubeMap = &shadowCubemap;
-    ctx.shadowContext.nearPlane = shadowMap.nearPlane;
-    ctx.shadowContext.farPlane = shadowMap.farPlane;
-    ctx.shadowContext.farPlaneCubeMap = shadowCubemap.farPlane;
-    ctx.shadowContext.frustumHalfExtent = shadowMap.frustumHalfExtent;
-    ctx.shadowContext.shadowRes = shadowMap.SHADOW_RES;
     ctx.prefilterMap = hdrSkybox.GetPrefilterMap();
     ctx.brdfLUTMap = hdrSkybox.GetbrdfLUTMap();
     ctx.envIntensity = hdrSkybox.envIntensity;

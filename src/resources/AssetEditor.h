@@ -142,8 +142,8 @@ namespace Lengine {
 
             file << "\n";
 
-            file << "SizeStart=" << asset.sizeStart << "\n";
-            file << "SizeEnd=" << asset.sizeEnd << "\n";
+            file << "SizeStart=" << asset.sizeStart.x << "," << asset.sizeStart.y << "\n";
+            file << "SizeEnd=" << asset.sizeEnd.x << "," << asset.sizeEnd.y << "\n";
 
             file << "ColorStart=" << asset.colorStart.r << "," << asset.colorStart.g << ","
                 << asset.colorStart.b << "," << asset.colorStart.a << "\n";
@@ -157,6 +157,48 @@ namespace Lengine {
 
             file << "Gravity=" << asset.gravity << "\n";
             file << "Drag=" << asset.drag << "\n";
+
+            // -- shape block (loader reads it optionally, trailing so files saved
+            //    before shape existed still parse fine) --
+            file << "\n";
+
+            file << "Shape=" << static_cast<int>(asset.shape) << "\n";
+            file << "ShapeExtents=" << asset.shapeExtents.x << "," << asset.shapeExtents.y << ","
+                << asset.shapeExtents.z << "\n";
+            file << "ShapeRadius=" << asset.shapeRadius << "\n";
+
+            // -- emission block (same reasoning as shape above) --
+            file << "\n";
+
+            file << "EmissionRate=" << asset.emissionRate << "\n";
+            file << "Looping=" << (asset.looping ? 1 : 0) << "\n";
+            file << "Duration=" << asset.duration << "\n";
+            file << "StartDelay=" << asset.startDelay << "\n";
+
+            // -- determinism block (same reasoning — must come after emission,
+            //    since the loader only tries to read it once emission succeeds) --
+            file << "\n";
+
+            file << "UseSeed=" << (asset.useSeed ? 1 : 0) << "\n";
+            file << "Seed=" << asset.seed << "\n";
+
+            // -- rotation block (must stay LAST — same reasoning as the others) --
+            file << "\n";
+
+            file << "RotationMode=" << static_cast<int>(asset.rotationMode) << "\n";
+            file << "FixedRotationDeg=" << asset.fixedRotationDeg << "\n";
+
+            // -- ground collision block (same reasoning as the others) --
+            file << "\n";
+
+            file << "CollideWithGround=" << (asset.collideWithGround ? 1 : 0) << "\n";
+            file << "GroundHeight=" << asset.groundHeight << "\n";
+
+            // -- death sub-emitter block (must stay LAST) --
+            file << "\n";
+
+            file << "SubEmitterAssetID=" << (uint64_t)asset.subEmitterAssetID << "\n";
+            file << "SubEmitterTrigger=" << static_cast<int>(asset.subEmitterTrigger) << "\n";
         }
     };
     

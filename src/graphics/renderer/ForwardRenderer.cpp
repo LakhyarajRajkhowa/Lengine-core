@@ -12,51 +12,6 @@ void ForwardRenderer::RenderScene(const RenderContext& ctx)
     FlushTransparentQueue(ctx);
 }
 
-void ForwardRenderer::bindCameraUniforms(
-    GLSLProgram& shader,
-    const glm::mat4& model,
-    Camera3d& editorCamera
-) {
-
-    shader.setMat4("model", model); 
-    shader.setMat4("view", editorCamera.getViewMatrix());
-    shader.setMat4("projection", editorCamera.getProjectionMatrix());
-    shader.setVec3("cameraPos", editorCamera.getCameraPosition());
-    shader.setVec3("viewPos", editorCamera.getCameraPosition());
-
-}
-
-
-
-void ForwardRenderer::bindPBRLights(
-    GLSLProgram& shader,
-    const std::vector<Light>& lights
-) {
-    int count = (int)lights.size();
-
-
-    for (int i = 0; i < count; i++) {
-
-        shader.setVec3(
-            "lightColors[" + std::to_string(i) + "]",
-            lights[i].color * glm::vec3(1000)
-        );
-    }
-}
-
-void ForwardRenderer::bindPBRMaterial(
-    GLSLProgram& shader,
-    const ResolvedMaterial& mat
-) {
-    shader.setVec3("material.albedo", mat.albedo);
-    shader.setFloat("material.metallic", mat.metallic);
-    shader.setFloat("material.roughness", mat.roughness);
-    shader.setFloat("material.ao", mat.ao);
-    shader.setFloat("material.normalStrength", mat.normalStrength);
-}
-
-
-
 
 void ForwardRenderer::bindTexture(
     GLSLProgram& shader,
@@ -94,14 +49,6 @@ void ForwardRenderer::bindTexture(
 
 
 
-void ForwardRenderer::drawSubMesh(
-    Mesh& sm,
-    GLSLProgram& shader
-) {
-    sm.draw();
-}
-
-
 void ForwardRenderer::bindShadowMapUniforms(
     GLSLProgram& shader,
     ShadowMap& shadowMap,
@@ -109,29 +56,8 @@ void ForwardRenderer::bindShadowMapUniforms(
     const glm::vec3& camPos
 ) {
 
-    glm::mat4 lightSpaceProj =
-        glm::ortho(
-            -20.0f, 20.0f,
-            -20.0f, 20.0f,
-            shadowMap.nearPlane, shadowMap.farPlane
-        );
+    glm::mat4 lightSpaceMat = shadowMap.lightSpaceMat;
 
-    
-    glm::vec3 lightDir = glm::normalize(lightTransform.localRotation * glm::vec3(0.0f, -1.0f, 0.0f));
-
-    glm::vec3 center = camPos;  // anchor to camera
-
-    glm::vec3 lightPos = center - lightDir * 20.0f; // move back along light dir
-
-    glm::mat4 lightView = glm::lookAt(
-        lightPos,
-        center,
-        glm::vec3(0, 1, 0)
-    );
-
-
-
-    glm::mat4 lightSpaceMat = lightSpaceProj * lightView;
     shader.setMat4(
         "lightSpaceMatrix",
         lightSpaceMat
@@ -180,11 +106,11 @@ void ForwardRenderer::shadowMapPass(const RenderContext& ctx, std::shared_ptr<GL
     pbrShader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
     pbrShader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
-    float shadowTexelWorldSize = (ctx.shadowContext.frustumHalfExtent * 2.0f) / static_cast<float>((ctx.shadowContext.shadowRes));
+    float shadowTexelWorldSize = (ctx.shadowContext.shadowMap->shadowExtent * 2.0f) / static_cast<float>((ctx.shadowContext.shadowMap->SHADOW_RES));
     pbrShader->setFloat("shadowTexelWorldSize", shadowTexelWorldSize);
-    pbrShader->setFloat("nearPlane", (ctx.shadowContext.nearPlane));
-    pbrShader->setFloat("farPlane", (ctx.shadowContext.farPlane));
-    pbrShader->setFloat("farPlaneCubeMap", (ctx.shadowContext.farPlaneCubeMap));
+    pbrShader->setFloat("shadowNearPlane", (ctx.shadowContext.shadowMap->shadowNear));
+    pbrShader->setFloat("shadowFarPlane", (ctx.shadowContext.shadowMap->shadowFar));
+    pbrShader->setFloat("farPlaneCubeMap", (ctx.shadowContext.shadowCubeMap->farPlane));
 
 
 

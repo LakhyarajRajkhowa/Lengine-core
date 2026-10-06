@@ -31,8 +31,20 @@ namespace Lengine {
 
         float coneAngleDeg = 35.0f;
 
-        float sizeStart = 0.08f;
-        float sizeEnd = 0.02f;
+        ParticleRotationMode rotationMode = ParticleRotationMode::Random;
+        float fixedRotationDeg = 0.0f;
+
+        ParticleShape shape = ParticleShape::Point;
+        glm::vec3     shapeExtents = glm::vec3(1.0f, 0.0f, 1.0f); 
+        float         shapeRadius = 1.0f;                         
+
+        float emissionRate = 10.0f;   // particles per second
+        bool  looping = true;
+        float duration = 5.0f;    // ignored if looping
+        float startDelay = 0.0f;
+
+        glm::vec2 sizeStart = glm::vec2(0.08f);
+        glm::vec2 sizeEnd = glm::vec2(0.02f);
 
         glm::vec4 colorStart = { 0.5f, 0.0f, 0.0f, 1.0f };
         glm::vec4 colorEnd = { 0.2f, 0.0f, 0.0f, 0.0f };
@@ -40,9 +52,18 @@ namespace Lengine {
 
         float gravity = -9.8f;
         float drag = 1.5f;
+
+
+        bool  collideWithGround = false;
+        float groundHeight = 0.0f;
+
+        UUID subEmitterAssetID = UUID::Null;
+        ParticleDeathSubEmitterTrigger subEmitterTrigger = ParticleDeathSubEmitterTrigger::None;
+
+        bool     useSeed = false;
+        uint32_t seed = 0;
     };
 
-    // "r,g,b,a" -> vec4, mirrors the comma-split style BoneMask uses for "id,name"
     static glm::vec4 ParseVec4Csv(const std::string& csv)
     {
         glm::vec4 v(0.0f);
@@ -104,10 +125,24 @@ namespace Lengine {
         std::getline(file, line); // blank line
 
         std::getline(file, line);
-        asset->sizeStart = std::stof(line.substr(line.find('=') + 1));
+        {
+            std::string v = line.substr(line.find('=') + 1);
+            size_t comma = v.find(',');
+            if (comma == std::string::npos)
+                asset->sizeStart = glm::vec2(std::stof(v));
+            else
+                asset->sizeStart = glm::vec2(std::stof(v.substr(0, comma)), std::stof(v.substr(comma + 1)));
+        }
 
         std::getline(file, line);
-        asset->sizeEnd = std::stof(line.substr(line.find('=') + 1));
+        {
+            std::string v = line.substr(line.find('=') + 1);
+            size_t comma = v.find(',');
+            if (comma == std::string::npos)
+                asset->sizeEnd = glm::vec2(std::stof(v));
+            else
+                asset->sizeEnd = glm::vec2(std::stof(v.substr(0, comma)), std::stof(v.substr(comma + 1)));
+        }
 
         std::getline(file, line);
         asset->colorStart = ParseVec4Csv(line.substr(line.find('=') + 1));
@@ -125,6 +160,78 @@ namespace Lengine {
 
         std::getline(file, line);
         asset->drag = std::stof(line.substr(line.find('=') + 1));
+
+        // -- shape block (optional — appended after the original format,
+        //    so older asset files without it just stop here and keep defaults) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->shape = static_cast<ParticleShape>(std::stoi(line.substr(line.find('=') + 1)));
+
+            if (std::getline(file, line))
+                asset->shapeExtents = glm::vec3(ParseVec4Csv(line.substr(line.find('=') + 1)));
+
+            if (std::getline(file, line))
+                asset->shapeRadius = std::stof(line.substr(line.find('=') + 1));
+        }
+
+        // -- emission block (optional — appended after shape, same reasoning) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->emissionRate = std::stof(line.substr(line.find('=') + 1));
+
+            if (std::getline(file, line))
+                asset->looping = std::stoi(line.substr(line.find('=') + 1)) != 0;
+
+            if (std::getline(file, line))
+                asset->duration = std::stof(line.substr(line.find('=') + 1));
+
+            if (std::getline(file, line))
+                asset->startDelay = std::stof(line.substr(line.find('=') + 1));
+        }
+
+        // -- determinism block (optional, same reasoning as shape/emission) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->useSeed = std::stoi(line.substr(line.find('=') + 1)) != 0;
+
+            if (std::getline(file, line))
+                asset->seed = static_cast<uint32_t>(std::stoul(line.substr(line.find('=') + 1)));
+        }
+
+        // -- rotation block (optional, same reasoning as the others) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->rotationMode = static_cast<ParticleRotationMode>(
+                    std::stoi(line.substr(line.find('=') + 1)));
+
+            if (std::getline(file, line))
+                asset->fixedRotationDeg = std::stof(line.substr(line.find('=') + 1));
+        }
+
+        // -- ground collision block (optional, same reasoning as the others) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->collideWithGround = std::stoi(line.substr(line.find('=') + 1)) != 0;
+
+            if (std::getline(file, line))
+                asset->groundHeight = std::stof(line.substr(line.find('=') + 1));
+        }
+
+        // -- death sub-emitter block (optional, same reasoning) --
+        if (std::getline(file, line)) // blank line
+        {
+            if (std::getline(file, line))
+                asset->subEmitterAssetID = UUID(std::stoull(line.substr(line.find('=') + 1)));
+
+            if (std::getline(file, line))
+                asset->subEmitterTrigger = static_cast<ParticleDeathSubEmitterTrigger>(
+                    std::stoi(line.substr(line.find('=') + 1)));
+        }
 
         return asset;
     }

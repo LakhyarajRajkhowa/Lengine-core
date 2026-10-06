@@ -751,6 +751,7 @@ std::unique_ptr<Scene> Scene::Clone()
     newReg.movements.CloneFrom(thisReg.movements, entityMap);
     newReg.scripts.CloneFrom(thisReg.scripts, entityMap);
     newReg.boneAttachments.CloneFrom(thisReg.boneAttachments, entityMap);
+    newReg.particleEmitters.CloneFrom(thisReg.particleEmitters, entityMap);
 
 
     if (primaryCamera != NullEntity)

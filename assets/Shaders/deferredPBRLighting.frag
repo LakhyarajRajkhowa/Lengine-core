@@ -38,8 +38,9 @@ uniform mat3 envRotation;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubeMap;
 uniform mat4 lightSpaceMatrix;
-uniform float nearPlane;
-uniform float farPlane;
+uniform float shadowNearPlane;
+uniform float shadowFarPlane;
+uniform float pointShadowFarPlane;
 uniform float shadowTexelWorldSize;
 
 uniform vec3 cameraPos;
@@ -54,33 +55,42 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
        projCoords.z > 1.0)
         return 0.0;
 
-    float closestDepth = texture(shadowMap, projCoords.xy).r;
     float currentDepth = projCoords.z;
 
-    // slope scale in world units, grows at grazing angles
     float NdotL = max(dot(normal, lightDir), 0.0);
     float slope = clamp(sqrt(1.0 - NdotL * NdotL) / max(NdotL, 0.05), 0.0, 8.0);
 
-    // world-space bias: proportional to texel footprint, scaled by slope
     float biasWorld = clamp(slope * shadowTexelWorldSize * 1.5,
                              shadowTexelWorldSize * 0.5,
                              shadowTexelWorldSize * 8.0);
-
-    // convert to NDC depth space using the actual frustum range
-    float bias = biasWorld / (farPlane - nearPlane);
-
-    float shadow = 0.0;
+    float bias = biasWorld / (shadowFarPlane - shadowNearPlane);
 
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
 
-    for(int x = -1; x <= 1; ++x)
-    for(int y = -1; y <= 1; ++y)
+    const vec2 offsets[13] = vec2[](
+        vec2( 0.0,  0.0),
+        vec2( 1.0,  0.0), vec2(-1.0,  0.0),
+        vec2( 0.0,  1.0), vec2( 0.0, -1.0),
+        vec2( 1.0,  1.0), vec2(-1.0,  1.0),
+        vec2( 1.0, -1.0), vec2(-1.0, -1.0),
+        vec2( 2.0,  0.0), vec2(-2.0,  0.0),
+        vec2( 0.0,  2.0), vec2( 0.0, -2.0)
+    );
+
+    float shadow = 0.0;
+    for (int i = 0; i < 13; i++)
     {
-        float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x,y)*texelSize).r;
+        vec2 sampleUV = projCoords.xy + offsets[i] * texelSize;
+        float pcfDepth = texture(shadowMap, sampleUV).r;
         shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
     }
+    shadow /= 13.0;
 
-    shadow /= 9.0;
+    // prevents hard shadow-map boundary cutoff
+    float fadeStart = 0.85;
+    vec2 edgeDist = abs(projCoords.xy - 0.5) * 2.0;
+    float edgeFade = 1.0 - clamp((max(edgeDist.x, edgeDist.y) - fadeStart) / (1.0 - fadeStart), 0.0, 1.0);
+    shadow = mix(0.0, shadow, edgeFade);
 
     return shadow;
 }
@@ -98,7 +108,7 @@ float ShadowCubeMapCalculation(vec3 fragPos, vec3 lightPos)
     float currentDepth = length(fragToLight);
 
     float shadow = 0.0;
-    float bias = max(0.05 * (currentDepth / farPlane), 0.005);
+    float bias = max(0.05 * (currentDepth / pointShadowFarPlane), 0.005);
 
     int samples  = 20;
     float viewDistance = length(cameraPos - fragPos);
@@ -106,7 +116,7 @@ float ShadowCubeMapCalculation(vec3 fragPos, vec3 lightPos)
     for(int i = 0; i < samples; ++i)
     {
         float closestDepth = texture(shadowCubeMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
-        closestDepth *= farPlane;   // undo mapping [0;1]
+        closestDepth *= pointShadowFarPlane;   // undo mapping [0;1]
         if(currentDepth - bias > closestDepth)
             shadow += 1.0;
     }

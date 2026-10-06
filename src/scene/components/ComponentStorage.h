@@ -23,7 +23,8 @@
 #include "Light.h"
 #include "ScriptComponent.h"
 #include "BoneAttachmentComponent.h"
-
+#include "ParticleEmitter.h"
+#include "AIControllerComponent.h"
 namespace Lengine {
 
     template<typename T>

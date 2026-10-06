@@ -240,13 +240,13 @@ UUID AssetManager::CreateParticleEmitter(const std::string name) {
 }
 
 void AssetManager::SaveParticleEmitter(const UUID& id) {
-    const ParticleEmitterAsset& pe = *GetParticleEmitter(id);
+    const ParticleEmitterAsset& pe = *GetParticleEmitterAsset(id);
     const std::filesystem::path libPath = GetAssetMetaData(id)->libraryPath;
 
     ParticleEmitterSaver::Save(pe, libPath);
 }
 
-std::shared_ptr<ParticleEmitterAsset> AssetManager::GetParticleEmitter(const UUID& id)
+std::shared_ptr<ParticleEmitterAsset> AssetManager::GetParticleEmitterAsset(const UUID& id)
 {
     auto it = particleEmitters.find(id);
     if (it == particleEmitters.end())
@@ -257,7 +257,7 @@ std::shared_ptr<ParticleEmitterAsset> AssetManager::GetParticleEmitter(const UUI
 
 bool AssetManager::LoadParticleEmitter(const UUID& id) {
 
-    if (GetParticleEmitter(id)) return true;
+    if (GetParticleEmitterAsset(id)) return true;
 
     auto pe = AssetDatabase::LoadAsset<ParticleEmitterAsset>(id);
 

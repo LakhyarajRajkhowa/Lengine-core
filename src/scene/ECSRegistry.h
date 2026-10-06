@@ -45,6 +45,8 @@ namespace Lengine {
             lights.Remove(id);
             scripts.Remove(id);
             boneAttachments.Remove(id);
+            particleEmitters.Remove(id);
+            aiControllers.Remove(id);
 
             auto it = std::find(entities.begin(), entities.end(), id);
             if (it != entities.end())
@@ -97,7 +99,8 @@ namespace Lengine {
         ComponentStorage<Light>               lights;
         ComponentStorage<ScriptComponent>     scripts;
         ComponentStorage<BoneAttachmentComponent> boneAttachments;
-
+        ComponentStorage<ParticleEmitter> particleEmitters;
+        ComponentStorage<AIControllerComponent> aiControllers;
 
 
         void Clear()
@@ -109,6 +112,7 @@ namespace Lengine {
             controllers.Clear();   movements.Clear();      rigidBodies.Clear();
             nameTags.Clear();      cameras.Clear();        hierarchies.Clear();
             lights.Clear();        scripts.Clear();        boneAttachments.Clear();
+            particleEmitters.Clear();   aiControllers.Clear();
         }
 
 
@@ -143,40 +147,42 @@ namespace Lengine {
     };
 
 
-    template<> inline size_t Registry::StorageSize<TransformComponent>()  const { return transforms.Size(); }
-    template<> inline size_t Registry::StorageSize<MeshRenderer>()        const { return meshRenderers.Size(); }
-    template<> inline size_t Registry::StorageSize<MeshFilter>()          const { return meshFilters.Size(); }
-    template<> inline size_t Registry::StorageSize<SkeletonComponent>()   const { return skeletons.Size(); }
-    template<> inline size_t Registry::StorageSize<AnimationComponent>()  const { return animations.Size(); }
-    template<> inline size_t Registry::StorageSize<ColliderComponent>()   const { return colliders.Size(); }
-    template<> inline size_t Registry::StorageSize<ControllerComponent>() const { return controllers.Size(); }
-    template<> inline size_t Registry::StorageSize<MovementComponent>()   const { return movements.Size(); }
-    template<> inline size_t Registry::StorageSize<RigidbodyComponent>()  const { return rigidBodies.Size(); }
-    template<> inline size_t Registry::StorageSize<NameTagComponent>()    const { return nameTags.Size(); }
-    template<> inline size_t Registry::StorageSize<CameraComponent>()     const { return cameras.Size(); }
-    template<> inline size_t Registry::StorageSize<HierarchyComponent>()  const { return hierarchies.Size(); }
-    template<> inline size_t Registry::StorageSize<Light>()               const { return lights.Size(); }
-    template<> inline size_t Registry::StorageSize<ScriptComponent>()     const { return scripts.Size(); }
-    template<> inline size_t Registry::StorageSize<BoneAttachmentComponent>()     const { return boneAttachments.Size(); }
+    template<> inline size_t Registry::StorageSize<TransformComponent>()            const { return transforms.Size(); }
+    template<> inline size_t Registry::StorageSize<MeshRenderer>()                  const { return meshRenderers.Size(); }
+    template<> inline size_t Registry::StorageSize<MeshFilter>()                    const { return meshFilters.Size(); }
+    template<> inline size_t Registry::StorageSize<SkeletonComponent>()             const { return skeletons.Size(); }
+    template<> inline size_t Registry::StorageSize<AnimationComponent>()            const { return animations.Size(); }
+    template<> inline size_t Registry::StorageSize<ColliderComponent>()             const { return colliders.Size(); }
+    template<> inline size_t Registry::StorageSize<ControllerComponent>()           const { return controllers.Size(); }
+    template<> inline size_t Registry::StorageSize<MovementComponent>()             const { return movements.Size(); }
+    template<> inline size_t Registry::StorageSize<RigidbodyComponent>()            const { return rigidBodies.Size(); }
+    template<> inline size_t Registry::StorageSize<NameTagComponent>()              const { return nameTags.Size(); }
+    template<> inline size_t Registry::StorageSize<CameraComponent>()               const { return cameras.Size(); }
+    template<> inline size_t Registry::StorageSize<HierarchyComponent>()            const { return hierarchies.Size(); }
+    template<> inline size_t Registry::StorageSize<Light>()                         const { return lights.Size(); }
+    template<> inline size_t Registry::StorageSize<ScriptComponent>()               const { return scripts.Size(); }
+    template<> inline size_t Registry::StorageSize<BoneAttachmentComponent>()       const { return boneAttachments.Size(); }
+    template<> inline size_t Registry::StorageSize<ParticleEmitter>()               const { return particleEmitters.Size(); }
+    template<> inline size_t Registry::StorageSize<AIControllerComponent>()         const { return aiControllers.Size(); }
 
 
-
-
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<TransformComponent>()  const { return transforms.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MeshRenderer>()        const { return meshRenderers.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MeshFilter>()          const { return meshFilters.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<SkeletonComponent>()   const { return skeletons.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<AnimationComponent>()  const { return animations.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ColliderComponent>()   const { return colliders.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ControllerComponent>() const { return controllers.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MovementComponent>()   const { return movements.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<RigidbodyComponent>()  const { return rigidBodies.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<NameTagComponent>()    const { return nameTags.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<CameraComponent>()     const { return cameras.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<HierarchyComponent>()  const { return hierarchies.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<Light>()               const { return lights.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ScriptComponent>()     const { return scripts.GetEntities(); }
-    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<BoneAttachmentComponent>()     const { return boneAttachments.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<TransformComponent>()         const { return transforms.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MeshRenderer>()               const { return meshRenderers.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MeshFilter>()                 const { return meshFilters.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<SkeletonComponent>()          const { return skeletons.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<AnimationComponent>()         const { return animations.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ColliderComponent>()          const { return colliders.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ControllerComponent>()        const { return controllers.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<MovementComponent>()          const { return movements.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<RigidbodyComponent>()         const { return rigidBodies.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<NameTagComponent>()           const { return nameTags.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<CameraComponent>()            const { return cameras.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<HierarchyComponent>()         const { return hierarchies.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<Light>()                      const { return lights.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ScriptComponent>()            const { return scripts.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<BoneAttachmentComponent>()    const { return boneAttachments.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ParticleEmitter>()            const { return particleEmitters.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<AIControllerComponent>()      const { return aiControllers.GetEntities(); }
 
 
     template<> inline bool Registry::HasComponent<TransformComponent>(Entity e) const { return transforms.Has(e); }
@@ -254,7 +260,17 @@ namespace Lengine {
     template<> inline BoneAttachmentComponent& Registry::AddComponent<BoneAttachmentComponent>(Entity e, const BoneAttachmentComponent& c) { return boneAttachments.Add(e, c); }
     template<> inline void Registry::RemoveComponent<BoneAttachmentComponent>(Entity e) { boneAttachments.Remove(e); }
 
-    // for the const version of Get()
+    template<> inline bool Registry::HasComponent<ParticleEmitter>(Entity e) const { return particleEmitters.Has(e); }
+    template<> inline ParticleEmitter& Registry::GetComponent<ParticleEmitter>(Entity e) { return particleEmitters.Get(e); }
+    template<> inline ParticleEmitter& Registry::AddComponent<ParticleEmitter>(Entity e, const ParticleEmitter& c) { return particleEmitters.Add(e, c); }
+    template<> inline void Registry::RemoveComponent<ParticleEmitter>(Entity e) { particleEmitters.Remove(e); }
+
+    template<> inline bool Registry::HasComponent<AIControllerComponent>(Entity e) const { return aiControllers.Has(e); }
+    template<> inline AIControllerComponent& Registry::GetComponent<AIControllerComponent>(Entity e) { return aiControllers.Get(e); }
+    template<> inline AIControllerComponent& Registry::AddComponent<AIControllerComponent>(Entity e, const AIControllerComponent& c) { return aiControllers.Add(e, c); }
+    template<> inline void Registry::RemoveComponent<AIControllerComponent>(Entity e) { aiControllers.Remove(e); }
+
+    // for const Get()
     template<> inline const TransformComponent& Registry::GetComponent<TransformComponent>(Entity e) const { return transforms.Get(e); }
     template<> inline const MeshRenderer& Registry::GetComponent<MeshRenderer>(Entity e) const { return meshRenderers.Get(e); }
     template<> inline const MeshFilter& Registry::GetComponent<MeshFilter>(Entity e) const { return meshFilters.Get(e); }
@@ -270,6 +286,8 @@ namespace Lengine {
     template<> inline const Light& Registry::GetComponent<Light>(Entity e) const { return lights.Get(e); }
     template<> inline const ScriptComponent& Registry::GetComponent<ScriptComponent>(Entity e) const { return scripts.Get(e); }
     template<> inline const BoneAttachmentComponent& Registry::GetComponent<BoneAttachmentComponent>(Entity e) const { return boneAttachments.Get(e); }
+    template<> inline const ParticleEmitter& Registry::GetComponent<ParticleEmitter>(Entity e) const { return particleEmitters.Get(e); }
+    template<> inline const AIControllerComponent& Registry::GetComponent<AIControllerComponent>(Entity e) const { return aiControllers.Get(e); }
 
 
 } // namespace Lengine

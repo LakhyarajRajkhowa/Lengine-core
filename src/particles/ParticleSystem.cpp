@@ -5,31 +5,42 @@
 
 using namespace Lengine;
 
-static std::mt19937 s_rng{ std::random_device{}() };
+std::mt19937 ParticleSystem::MakeRng(const ParticleEmitterAsset& asset) {
+    if (asset.useSeed) {
+        return std::mt19937(asset.seed);
+    }
+    // Non-deterministic path: seed a fresh generator off the instance's
+    // ambient entropy source rather than handing out ambientRng itself,
+    // so callers get an independent, movable std::mt19937 either way.
+    return std::mt19937(ambientRng());
+}
 
-float ParticleSystem::RandRange(float lo, float hi) {
+float ParticleSystem::RandRange(std::mt19937& rng, float lo, float hi) {
+    if (lo > hi) {
+        return hi;
+    }
     std::uniform_real_distribution<float> dist(lo, hi);
-    return dist(s_rng);
+    return dist(rng);
 }
 
-int ParticleSystem::RandRangeInt(int lo, int hi) {
+int ParticleSystem::RandRangeInt(std::mt19937& rng, int lo, int hi) {
+    if (lo > hi) {
+        return hi;
+    }
     std::uniform_int_distribution<int> dist(lo, hi);
-    return dist(s_rng);
+    return dist(rng);
 }
 
-// Samples a random direction within `coneAngleDeg` of `axis`,
-// uniformly distributed over the spherical cap (not just linear angle lerp,
-// otherwise samples bunch up near the axis).
-glm::vec3 ParticleSystem::RandomDirectionInCone(const glm::vec3& axis, float coneAngleDeg) {
+
+glm::vec3 ParticleSystem::RandomDirectionInCone(std::mt19937& rng, const glm::vec3& axis, float coneAngleDeg) {
     float coneRad = glm::radians(coneAngleDeg);
 
-    float z = RandRange(std::cos(coneRad), 1.0f);   // cos(theta), uniform over cap
-    float phi = RandRange(0.0f, glm::two_pi<float>());
+    float z = RandRange(rng, std::cos(coneRad), 1.0f);   
+    float phi = RandRange(rng, 0.0f, glm::two_pi<float>());
     float r = std::sqrt(1.0f - z * z);
 
     glm::vec3 localDir(r * std::cos(phi), r * std::sin(phi), z);
 
-    // Build a tangent basis around `axis` so localDir's local Z aligns with axis
     glm::vec3 up = glm::abs(axis.y) < 0.99f ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
     glm::vec3 tangent = glm::normalize(glm::cross(up, axis));
     glm::vec3 bitangent = glm::cross(axis, tangent);
@@ -39,16 +50,59 @@ glm::vec3 ParticleSystem::RandomDirectionInCone(const glm::vec3& axis, float con
     );
 }
 
+glm::vec3 ParticleSystem::SampleShapeOffset(
+    std::mt19937& rng,
+    ParticleShape shape,
+    const glm::vec3& extents,
+    float radius,
+    const glm::vec3& normal
+) {
+    switch (shape) {
+    case ParticleShape::Box:
+        return glm::vec3(
+            RandRange(rng, -extents.x * 0.5f, extents.x * 0.5f),
+            RandRange(rng, -extents.y * 0.5f, extents.y * 0.5f),
+            RandRange(rng, -extents.z * 0.5f, extents.z * 0.5f)
+        );
+
+    case ParticleShape::Sphere:
+    {
+
+        glm::vec3 p;
+        do {
+            p = glm::vec3(RandRange(rng, -1.0f, 1.0f), RandRange(rng, -1.0f, 1.0f), RandRange(rng, -1.0f, 1.0f));
+        } while (glm::dot(p, p) > 1.0f);
+        return p * radius;
+    }
+
+    case ParticleShape::Circle:
+    {
+
+        float r = radius * std::sqrt(RandRange(rng, 0.0f, 1.0f));
+        float theta = RandRange(rng, 0.0f, glm::two_pi<float>());
+
+        glm::vec3 axis = glm::length(normal) > 0.0001f ? glm::normalize(normal) : glm::vec3(0, 1, 0);
+        glm::vec3 up = glm::abs(axis.y) < 0.99f ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+        glm::vec3 tangent = glm::normalize(glm::cross(up, axis));
+        glm::vec3 bitangent = glm::cross(axis, tangent);
+
+        return tangent * (r * std::cos(theta)) + bitangent * (r * std::sin(theta));
+    }
+
+    case ParticleShape::Point:
+    default:
+        return glm::vec3(0.0f);
+    }
+}
+
 void ParticleSystem::Init() {
-    // Compile the billboard shader — same convention as ShadowMap/Skybox owning
-    // their own GLSLProgram member directly.
+
     particleShader.compileShaders(
         Paths::Shaders + "particle.vert",
         Paths::Shaders + "particle.frag"
     );
     particleShader.linkShaders();
 
-    // Unit quad in local space, corners at -0.5..0.5 (billboard expands this in the shader)
     float quadVertices[] = {
         // x,    y
         -0.5f, -0.5f,
@@ -72,34 +126,41 @@ void ParticleSystem::Init() {
     // instance buffer — allocated empty, refilled with glBufferSubData each frame in Render()
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
     glBufferData(GL_ARRAY_BUFFER, pool.size() * sizeof(InstanceData), nullptr, GL_DYNAMIC_DRAW);
-    // location 1: instance position (vec3) + size (float) packed as vec4
+
+    // location 1: instance position (vec3)
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
         (void*)offsetof(InstanceData, position));
     glVertexAttribDivisor(1, 1);
 
-    // location 2: instance color (vec4)
+    // location 2: instance size (vec2 — width, height; was a single float packed with position)
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
-        (void*)offsetof(InstanceData, color));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+        (void*)offsetof(InstanceData, size));
     glVertexAttribDivisor(2, 1);
 
-    // location 3: instance brightness (vec4)
+    // location 3: instance color (vec4)
     glEnableVertexAttribArray(3);
     glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
-        (void*)offsetof(InstanceData, brightness));
+        (void*)offsetof(InstanceData, color));
     glVertexAttribDivisor(3, 1);
 
-    // location 4: instance rotation (float)
+    // location 4: instance brightness (vec4)
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
-        (void*)offsetof(InstanceData, rotation));
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+        (void*)offsetof(InstanceData, brightness));
     glVertexAttribDivisor(4, 1);
+
+    // location 5: instance rotation (float)
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+        (void*)offsetof(InstanceData, rotation));
+    glVertexAttribDivisor(5, 1);
 
     glBindVertexArray(0);
 
     instanceScratch.reserve(pool.size());
-    
+
 }
 
 void ParticleSystem::SpawnBurst(
@@ -107,56 +168,146 @@ void ParticleSystem::SpawnBurst(
     const glm::vec3& origin,
     const glm::vec3& normal
 ) {
-    auto asset = assetManager.GetParticleEmitter(emitterAssetID);
+    auto asset = assetManager.GetParticleEmitterAsset(emitterAssetID);
     if (!asset) return;
 
 
-    glm::vec3 axis = glm::length(normal) > 0.0001f ? glm::normalize(normal) : glm::vec3(0, 1, 0);
-    int count = RandRangeInt(asset->burstCountMin, asset->burstCountMax);
+    std::mt19937 rng = MakeRng(*asset);
 
+    int count = RandRangeInt(rng, asset->burstCountMin, asset->burstCountMax);
+    Emit(rng, *asset, origin, normal, count);
+}
+
+void ParticleSystem::Emit(
+    std::mt19937& rng,
+    const ParticleEmitterAsset& asset,
+    const glm::vec3& origin,
+    const glm::vec3& normal,
+    int count
+) {
+    if (count <= 0) return;
+
+    glm::vec3 axis = glm::length(normal) > 0.0001f ? glm::normalize(normal) : glm::vec3(0, 1, 0);
 
     for (int i = 0; i < count; ++i) {
         Particle& p = pool[nextFree];
-        nextFree = (nextFree + 1) % pool.size(); // ring buffer — overwrites oldest if pool is full
+        nextFree = (nextFree + 1) % pool.size(); 
 
-        glm::vec3 dir = RandomDirectionInCone(axis, asset->coneAngleDeg);
-        float     speed = RandRange(asset->speedMin, asset->speedMax);
+        glm::vec3 dir = axis;
+        float     speed = RandRange(rng, asset.speedMin, asset.speedMax);
 
-        p.position = origin;
+        glm::vec3 offset = SampleShapeOffset(rng, asset.shape, asset.shapeExtents, asset.shapeRadius, axis);
+
+        p.position = origin + offset;
         p.velocity = dir * speed;
-        p.colorStart = asset->colorStart;
-        p.colorEnd = asset->colorEnd;
-        p.color = asset->colorStart;
-        p.brightness = asset->brightness;
-        p.sizeStart = asset->sizeStart;
-        p.sizeEnd = asset->sizeEnd;
-        p.size = asset->sizeStart;
-        p.rotation = RandRange(0.0f, glm::two_pi<float>());
+        p.colorStart = asset.colorStart;
+        p.colorEnd = asset.colorEnd;
+        p.color = asset.colorStart;
+        p.brightness = asset.brightness;
+        p.sizeStart = asset.sizeStart;
+        p.sizeEnd = asset.sizeEnd;
+        p.size = asset.sizeStart;
+
+        p.rotationMode = asset.rotationMode;
+        switch (asset.rotationMode) {
+        case ParticleRotationMode::Fixed:
+            p.rotation = glm::radians(asset.fixedRotationDeg);
+            break;
+        case ParticleRotationMode::AlignToVelocity:
+            p.rotation = 0.0f;
+            break;
+        case ParticleRotationMode::Random:
+        default:
+            p.rotation = RandRange(rng, 0.0f, glm::two_pi<float>());
+            break;
+        }
+
         p.age = 0.0f;
-        p.lifetime = RandRange(asset->lifetimeMin, asset->lifetimeMax);
-        p.gravity = asset->gravity;
-        p.drag = asset->drag;
+        p.lifetime = RandRange(rng, asset.lifetimeMin, asset.lifetimeMax);
+        p.gravity = asset.gravity;
+        p.drag = asset.drag;
         p.alive = true;
-        p.textureID = asset->textureID;
-        p.blendMode = asset->blendMode;
+        p.collideWithGround = asset.collideWithGround;
+        p.groundHeight = asset.groundHeight;
+        p.subEmitterAssetID = asset.subEmitterAssetID;
+        p.subEmitterTrigger = asset.subEmitterTrigger;
+        p.textureID = asset.textureID;
+        p.blendMode = asset.blendMode;
     }
 }
 
-void ParticleSystem::Update(float dt) {
+void ParticleSystem::UpdateEmitter(ParticleEmitter& emitter, float dt) {
+    if (!emitter.playing) return;
+
+    auto asset = assetManager.GetParticleEmitterAsset(emitter.emitterAssetID);
+    if (!asset) return;
+
+    emitter.elapsedTime += dt;
+
+    if (emitter.elapsedTime < asset->startDelay) return;
+
+
+    if (!asset->looping) {
+        float activeTime = emitter.elapsedTime - asset->startDelay;
+        if (activeTime >= asset->duration) {
+            emitter.playing = false;
+            return;
+        }
+    }
+
+    // Accumulate fractional particles-per-second into whole particles.
+    emitter.emitAccumulator += asset->emissionRate * dt;
+
+    int toEmit = static_cast<int>(emitter.emitAccumulator);
+    if (toEmit <= 0) return;
+
+    emitter.emitAccumulator -= static_cast<float>(toEmit);
+
+    Emit(emitter.rng, *asset, emitter.origin, emitter.normal, toEmit);
+}
+
+void ParticleSystem::Update(float dt, ComponentStorage<ParticleEmitter>& emitters) {
+    auto& dense = emitters.GetDense();
+
+    for (size_t i = 0; i < dense.size(); ++i) {
+        ParticleEmitter& emitter = dense[i];
+        UpdateEmitter(emitter, dt);
+    }
+
     aliveCount = 0;
+    pendingSubEmitters.clear();
 
     for (Particle& p : pool) {
         if (!p.alive) continue;
 
         p.age += dt;
-        if (p.age >= p.lifetime) {
-            p.alive = false;
-            continue;
-        }
 
+        // Physics runs first so ground-collision checks below see this
+        // frame's moved position, not last frame's.
         p.velocity.y += p.gravity * dt;
         p.velocity *= glm::clamp(1.0f - p.drag * dt, 0.0f, 1.0f);
         p.position += p.velocity * dt;
+
+        bool expired = p.age >= p.lifetime;
+        bool hitGround = p.collideWithGround && p.position.y <= p.groundHeight;
+
+        if (expired || hitGround) {
+            p.alive = false;
+
+            bool spawnSub =
+                p.subEmitterAssetID != UUID::Null &&
+                (p.subEmitterTrigger == ParticleDeathSubEmitterTrigger::Both ||
+                    (expired && p.subEmitterTrigger == ParticleDeathSubEmitterTrigger::OnExpire) ||
+                    (hitGround && p.subEmitterTrigger == ParticleDeathSubEmitterTrigger::OnGroundHit));
+
+            if (spawnSub) {
+                glm::vec3 deathPos = p.position;
+                if (hitGround) deathPos.y = p.groundHeight;
+                pendingSubEmitters.push_back({ p.subEmitterAssetID, deathPos });
+            }
+
+            continue;
+        }
 
         float t = p.NormalizedAge();
         p.size = glm::mix(p.sizeStart, p.sizeEnd, t);
@@ -165,13 +316,36 @@ void ParticleSystem::Update(float dt) {
 
         ++aliveCount;
     }
+
+
+    for (auto& pending : pendingSubEmitters) {
+        SpawnBurst(pending.assetID, pending.position, glm::vec3(0, 1, 0));
+    }
 }
 void ParticleSystem::Render(const glm::mat4& view, const glm::mat4& projection) {
     batches.clear();
+
+
+    glm::vec3 camRight(view[0][0], view[1][0], view[2][0]);
+    glm::vec3 camUp(view[0][1], view[1][1], view[2][1]);
+
     for (const Particle& p : pool) {
         if (!p.alive) continue;
+
+        float renderRotation = p.rotation;
+
+        if (p.rotationMode == ParticleRotationMode::AlignToVelocity) {
+            float vx = glm::dot(p.velocity, camRight);
+            float vy = glm::dot(p.velocity, camUp);
+
+
+            if (vx * vx + vy * vy > 1e-8f) {
+                renderRotation = std::atan2(vy, vx) - glm::half_pi<float>();
+            }
+        }
+
         batches[{ p.textureID, p.blendMode }].push_back(
-            { p.position, p.size, p.color, p.brightness, p.rotation, });
+            { p.position, p.size, p.color, p.brightness, renderRotation });
     }
     if (batches.empty()) return;
 
@@ -205,7 +379,7 @@ void ParticleSystem::Render(const glm::mat4& view, const glm::mat4& projection) 
         if (hasTex) {
             if (auto tex = assetManager.getTexture(key.textureID)) {
                 glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, tex->id); // adjust to your Texture wrapper's handle name
+                glBindTexture(GL_TEXTURE_2D, tex->id); 
                 particleShader.setInt("particleTex", 0);
             }
             else {

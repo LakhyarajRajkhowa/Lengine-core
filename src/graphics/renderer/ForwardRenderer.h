@@ -50,18 +50,9 @@ namespace Lengine {
     private:
         AssetManager& assetManager;
 
-        float nearPlane = 0.1f;
-        float farPlane = 1000.5f;
-
         RenderQueue   opaqueQueue{ 512 };
         RenderQueue   transparentQueue{ 128 };
         CommandBuffer forwardCommandBuffer{ 2048 };
-
-        ResolvedMaterial resolvePBRMaterial(
-            const Material& baseMaterial,
-            const MaterialInstance& inst
-        );
-
 
 
         void RenderScene(
@@ -103,23 +94,6 @@ namespace Lengine {
             ShadowCubeMap& shadowCubeMap
         );
 
-        void bindCameraUniforms(
-            GLSLProgram& shader,
-            const glm::mat4& model,
-            Camera3d& editorCamera
-        );
-
-
-        void bindPBRLights(
-            GLSLProgram& shader,
-            const std::vector<Light>& lights
-        );
-
-        void bindPBRMaterial(
-            GLSLProgram& shader,
-            const ResolvedMaterial& mat
-        );
-
 
         void bindTexture(
             GLSLProgram& shader,
@@ -130,12 +104,6 @@ namespace Lengine {
             const char* samplerUniform,
             GLenum textureUnit
         );
-
-        void drawSubMesh(
-            Mesh& sm,
-            GLSLProgram& shader
-        );
-
 
 
     };

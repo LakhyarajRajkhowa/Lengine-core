@@ -15,8 +15,8 @@ void ShadowMap::Init() {
         GL_DEPTH_COMPONENT, GL_FLOAT, nullptr
     );
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Prevent shadow edge artifacts
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -65,29 +65,41 @@ void ShadowMap::renderDepthMap(
         return;
     }
 
-    glm::mat4 lightSpaceProj =
-        glm::ortho(
-            -20.0f, 20.0f,
-            -20.0f, 20.0f,
-            nearPlane, farPlane
-        );
+    shadowFar = shadowExtent * 4.0f;
 
     auto& lightTf = trs.Get(mainDirectionalLight);
+
     glm::vec3 lightDir = glm::normalize(lightTf.localRotation * glm::vec3(0.0f, -1.0f, 0.0f));
 
-    glm::vec3 center = camPos;  // anchor to camera
+    // Stable up vector — avoids degenerate lookAt when light is near-vertical
+    glm::vec3 up = (glm::abs(lightDir.y) > 0.99f)
+        ? glm::vec3(0.0f, 0.0f, 1.0f)
+        : glm::vec3(0.0f, 1.0f, 0.0f);
 
-    glm::vec3 lightPos = center - lightDir * 20.0f; // move back along light dir
+    glm::vec3 shadowCenter = camPos;
+    glm::vec3 lightPos = shadowCenter - lightDir * (shadowFar * 0.5f);
 
-    glm::mat4 lightView = glm::lookAt(
-        lightPos,
-        center,
-        glm::vec3(0, 1, 0)
-    );
+    glm::mat4 lightView = glm::lookAt(lightPos, lightPos + lightDir, up);
+    glm::mat4 lightProj = glm::orthoRH_ZO(-shadowExtent, shadowExtent,
+        -shadowExtent, shadowExtent,
+        shadowNear, shadowFar);
 
+    // ─── Texel snapping: quantize translation to shadow-map texel grid ───
+    {
+        glm::mat4 shadowMVP = lightProj * lightView;
+        glm::vec4 shadowOrigin = shadowMVP * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        shadowOrigin *= (float)SHADOW_RES * 0.5f;
 
+        glm::vec4 roundedOrigin = glm::round(shadowOrigin);
+        glm::vec4 roundOffset = roundedOrigin - shadowOrigin;
+        roundOffset *= 2.0f / (float)SHADOW_RES;
+        roundOffset.z = 0.0f;
+        roundOffset.w = 0.0f;
 
-    glm::mat4 lightSpaceMat = lightSpaceProj * lightView;
+        lightProj[3] += roundOffset;
+    }
+
+    lightSpaceMat = lightProj * lightView;
 
     depthShader.use();
     depthShader.setMat4("lightSpaceMatrix", lightSpaceMat);

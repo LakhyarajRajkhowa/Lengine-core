@@ -2,7 +2,9 @@
 #include <SDL2/SDL.h>
 #include <chrono>
 
+#include <string>
 
+#include "logging/LogBuffer.h"
 
 
 struct FrameStats {
@@ -33,6 +35,7 @@ inline FrameStats LimitFPS(int targetFPS, bool enable)
         double sleepMs = (targetFrame - deltaTime) * 1000.0;
         SDL_Delay((Uint32)sleepMs);
 
+
         // recalc deltaTime after sleep
         now = high_resolution_clock::now();
         deltaTime = duration<float>(now - lastTime).count();
@@ -44,6 +47,8 @@ inline FrameStats LimitFPS(int targetFPS, bool enable)
     stats.msPerFrame = deltaTime * 1000.0f;
     stats.fps = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
     stats.deltaTime = deltaTime;
+
+    DEBUG_LOG_GAP("FPS : " + std::to_string(stats.fps), 1000);
 
     return stats;
 }

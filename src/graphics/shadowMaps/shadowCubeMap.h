@@ -28,8 +28,8 @@ namespace Lengine {
 
 		unsigned int SHADOW_RES = 1024;
 
-		const float nearPlane = 0.01f;
-		const float farPlane = 1000.0f;
+		const float nearPlane = 0.1f;
+		const float farPlane = 100.0f;
 
 	private:
 

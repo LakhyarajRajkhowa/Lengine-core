@@ -141,7 +141,7 @@ namespace Lengine {
 		// PARTICLE EMITTERAS
 		void SaveParticleEmitter(const UUID& id);
 		UUID CreateParticleEmitter(const std::string name);
-		std::shared_ptr<ParticleEmitterAsset> GetParticleEmitter(const UUID& id);
+		std::shared_ptr<ParticleEmitterAsset> GetParticleEmitterAsset(const UUID& id);
 		bool LoadParticleEmitter(const UUID& id);
 
 		// ANIMATIONS

@@ -43,8 +43,7 @@ file(GLOB_RECURSE UTILS_SRC "src/utils/*.cpp" "src/utils/*.h")
 file(GLOB_RECURSE INPUT_SRC "src/input/*.cpp" "src/input/*.h")
 file(GLOB_RECURSE SCRIPTING_SRC "src/scripting/*.cpp" "src/scripting/*.h")
 file(GLOB_RECURSE PARTICLES_SRC "src/particles/*.cpp" "src/particles/*.h")
-
-
+file(GLOB_RECURSE AI_SRC "src/ai/*.cpp" "src/ai/*.h")
 
 
 file(GLOB_RECURSE EXTERNAL_SRC
@@ -74,6 +73,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "" FILES
     ${INPUT_SRC}
     ${SCRIPTING_SRC}
     ${PARTICLES_SRC}
+    ${AI_SRC}
 )
 
 # ────────────────────────────────────────────────
@@ -96,6 +96,7 @@ add_library(${PROJECT_NAME} STATIC
     ${INPUT_SRC}
     ${SCRIPTING_SRC}
     ${PARTICLES_SRC}
+    ${AI_SRC}
 
 )
 
