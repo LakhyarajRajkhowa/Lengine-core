@@ -35,7 +35,7 @@ namespace Lengine {
         assetManager.Init();
 
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("newScene");
+        scenesTobeLoaded.push_back("emptyScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 

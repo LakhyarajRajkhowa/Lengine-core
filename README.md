@@ -12,3 +12,15 @@
 
 # </p>
 
+### Custom Animation Blending
+
+<p align="center">
+  <img src="docs/clips/animation_combat_demo.gif" width="800" alt="Animation and combat demo">
+</p>
+
+### Nvidia PhysX Integration
+
+<p align="center">
+  <img src="docs/clips/Physx_demo.gif" width="800" alt="PhysX physics simulation">
+</p>
+

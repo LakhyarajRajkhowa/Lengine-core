@@ -13,10 +13,10 @@
     "cameraPosZ": 0,
     "cameraFov": 45,
 
-    "gameFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/TestGameFolder",
-    "engineFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/engine",
-    "editorFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/editor",
-    "gameExecutableFolder": "C:/Users/llakh/OneDrive/Desktop/Projects/Lengine/bin/Debug"
+    "gameFolderPath": "C:/Users/llakh/Desktop/Projects/Lengine/TestGameFolder",
+    "engineFolderPath": "C:/Users/llakh/Desktop/Projects/Lengine/engine",
+    "editorFolderPath": "C:/Users/llakh/Desktop/Projects/Lengine/editor",
+    "gameExecutableFolder": "C:/Users/llakh/Desktop/Projects/Lengine/bin/Debug"
 
 
 
